@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Reto FACES · Multijugador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- QR -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Firebase (Realtime Database) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<style>
+  :root{
+    --rojo:#C8102E; --rojo-osc:#9c0c23; --gris:#58595B;
+    --tinta:#1C1D21; --tinta-2:#26272c; --linea:#33353b;
+    --a:#C8102E; --b:#1D6FB8; --c:#E8A400; --d:#2E9E5B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--tinta);color:#fff;min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .wrap{max-width:980px;margin:0 auto;padding:18px 16px 40px;min-height:100dvh;display:flex;flex-direction:column}
+  .screen{display:none} .screen.on{display:flex;flex-direction:column;flex:1;animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .marca{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .logo{background:var(--rojo);color:#fff;font-weight:900;letter-spacing:1px;padding:8px 14px;border-radius:10px;font-size:20px;line-height:1;box-shadow:0 6px 18px rgba(200,16,46,.35)}
+  .marca small{color:#9a9ba0;font-weight:600;font-size:12px;letter-spacing:.5px}
+
+  .titulo{font-weight:900;font-size:clamp(30px,7vw,52px);line-height:1;letter-spacing:-1px;margin-top:8px}
+  .titulo em{color:var(--rojo);font-style:normal}
+  .subt{color:#b9bac0;font-weight:600;margin-top:10px}
+  .card{background:var(--tinta-2);border:1px solid var(--linea);border-radius:18px;padding:22px;margin-top:22px}
+  label{display:block;font-weight:700;font-size:13px;color:#c9cad0;margin:0 0 8px;letter-spacing:.3px}
+  input[type=text]{width:100%;padding:15px 16px;border-radius:12px;border:2px solid #3c3e45;background:#191a1e;color:#fff;font-size:17px;font-family:inherit;font-weight:600}
+  input[type=text]:focus{outline:none;border-color:var(--rojo)}
+  .btn{width:100%;margin-top:16px;padding:16px;border:none;border-radius:14px;background:var(--rojo);color:#fff;font-weight:800;font-size:17px;font-family:inherit;cursor:pointer;letter-spacing:.3px;box-shadow:0 8px 22px rgba(200,16,46,.32);transition:.15s}
+  .btn:hover{background:var(--rojo-osc)} .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.sec{background:#2f3138;box-shadow:none} .btn.sec:hover{background:#3a3c44}
+  .btn.ghost{background:transparent;border:2px solid #3c3e45;box-shadow:none}
+  .fila{display:flex;gap:12px}
+  .aviso{background:rgba(232,164,0,.12);border:1px solid #E8A400;color:#ffdf8a;border-radius:12px;padding:14px 16px;font-size:13px;font-weight:600;line-height:1.5;margin-top:16px}
+  .pie{color:#6f7075;font-size:12px;margin-top:20px;line-height:1.6}
+
+  /* ---- lobby anfitrión ---- */
+  .lobby-top{display:flex;flex-wrap:wrap;gap:20px;align-items:center;background:var(--tinta-2);border:1px solid var(--linea);border-radius:18px;padding:22px;margin-top:14px}
+  .pin-box{flex:1;min-width:200px}
+  .pin-box .lbl{color:#9a9ba0;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+  .pin{font-weight:900;font-size:clamp(40px,11vw,72px);letter-spacing:8px;line-height:1;margin-top:4px;color:#fff}
+  .join-url{color:#8a8b8f;font-size:12px;margin-top:8px;word-break:break-all}
+  #qr{background:#fff;padding:12px;border-radius:14px;display:inline-block;line-height:0}
+  .cuenta{font-weight:800;font-size:15px;color:#c9cad0;margin:22px 0 12px;display:flex;align-items:center;gap:10px}
+  .cuenta b{background:var(--rojo);color:#fff;border-radius:999px;padding:3px 12px;font-size:14px}
+  .players{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+  .pl{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--tinta-2);border:1px solid var(--linea);border-radius:14px;padding:14px 8px;animation:pop .35s ease}
+  .av{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+  .av svg{width:30px;height:30px}
+  .pl .nm{font-weight:700;font-size:13px;text-align:center;word-break:break-word;line-height:1.2}
+  .vacio{color:#6f7075;font-weight:600;padding:30px 0;text-align:center}
+
+  /* ---- avatar picker ---- */
+  .pick-lbl{margin-top:18px}
+  .swatches{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+  .sw{width:46px;height:46px;border-radius:12px;cursor:pointer;border:3px solid transparent;transition:.12s}
+  .sw.sel{border-color:#fff;transform:scale(1.06)}
+  .glyphs{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+  .gl{width:46px;height:46px;border-radius:12px;background:#191a1e;border:2px solid #3c3e45;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .gl svg{width:26px;height:26px;fill:#c9cad0}
+  .gl.sel{border-color:var(--rojo)} .gl.sel svg{fill:#fff}
+  .preview-av{display:flex;align-items:center;gap:14px;margin-top:18px;background:#191a1e;border-radius:14px;padding:14px}
+  .preview-av .av{width:56px;height:56px}
+  .preview-av .txt{font-weight:800;font-size:16px}
+
+  /* ---- pregunta ---- */
+  .barra-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .cont{font-weight:800;font-size:14px;color:#b9bac0}
+  .pill{background:#33353b;padding:6px 13px;border-radius:999px;font-weight:800;font-size:14px}
+  .pill.r{background:var(--rojo)}
+  .timer{height:12px;background:#33353b;border-radius:999px;overflow:hidden;margin-bottom:16px}
+  .timer>span{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--c),var(--rojo));border-radius:999px;transition:width 1s linear}
+  .cat{display:inline-block;background:#33353b;color:#c9cad0;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:5px 11px;border-radius:999px;margin-bottom:12px}
+  .pregunta{background:var(--tinta-2);border:1px solid var(--linea);border-radius:18px;padding:24px 22px;font-weight:800;font-size:clamp(18px,4.4vw,28px);line-height:1.28;min-height:96px;display:flex;align-items:center}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:520px){.grid{grid-template-columns:1fr}}
+  .op{display:flex;align-items:center;gap:14px;padding:18px 16px;border:none;border-radius:14px;color:#fff;font-weight:700;font-size:16px;font-family:inherit;text-align:left;cursor:pointer;line-height:1.25;transition:transform .12s,filter .12s,opacity .2s;position:relative}
+  .op:hover{filter:brightness(1.08)} .op:active{transform:scale(.99)}
+  .op[data-k="0"]{background:var(--a)} .op[data-k="1"]{background:var(--b)}
+  .op[data-k="2"]{background:var(--c);color:#1C1D21} .op[data-k="3"]{background:var(--d)}
+  .op .fig{width:26px;height:26px;flex:none}
+  .op .cnt{margin-left:auto;font-weight:900;font-size:18px;background:rgba(0,0,0,.22);border-radius:8px;padding:2px 10px;display:none}
+  .op.showcnt .cnt{display:inline-block}
+  .op.dim{opacity:.3} .op.bien{outline:4px solid #fff;box-shadow:0 0 0 7px rgba(46,158,91,.5)} .op.mal{outline:4px solid #fff;box-shadow:0 0 0 7px rgba(200,16,46,.5)}
+  .estado{text-align:center;font-weight:800;font-size:18px;margin-top:18px;min-height:26px}
+  .estado.ok{color:#5fd08a} .estado.no{color:#ff7183}
+  .explica{background:var(--tinta-2);border-left:4px solid var(--rojo);border-radius:0 12px 12px 0;padding:14px 16px;margin-top:14px;font-size:14px;font-weight:600;color:#d4d5da;line-height:1.5}
+  .espera{text-align:center;color:#b9bac0;font-weight:700;margin-top:24px;font-size:16px}
+
+  /* ---- tabla / podio ---- */
+  .rank{list-style:none;margin-top:8px}
+  .rank li{display:flex;align-items:center;gap:12px;background:var(--tinta-2);border:1px solid var(--linea);border-radius:12px;padding:10px 14px;margin-bottom:8px}
+  .rank .pos{font-weight:900;width:26px;color:#9a9ba0}
+  .rank .av{width:40px;height:40px} .rank .av svg{width:22px;height:22px}
+  .rank .nm{font-weight:700;flex:1}
+  .rank .sc{font-weight:900;color:#fff}
+  .rank li.me{border-color:var(--rojo);background:rgba(200,16,46,.12)}
+  .podio{display:flex;justify-content:center;align-items:flex-end;gap:14px;margin:20px 0}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .col .av{width:56px;height:56px}
+  .col .bar{width:82px;border-radius:12px 12px 0 0;background:var(--rojo);display:flex;align-items:flex-start;justify-content:center;padding-top:8px;font-weight:900}
+  .col .nm{font-weight:800;font-size:13px;text-align:center;max-width:90px}
+  .col .sc{color:#c9cad0;font-weight:700;font-size:12px}
+  .medalla{font-size:60px;text-align:center;margin:6px 0}
+  .center{text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ROL -->
+  <section class="screen on" id="s-rol">
+    <div class="marca"><span class="logo">FACES</span><small>CAPACITACIÓN · MULTIJUGADOR</small></div>
+    <h1 class="titulo">Reto del <em>Manual</em><br>de la App</h1>
+    <p class="subt">Crea una sala, comparte el QR y compitan en vivo.</p>
+    <div class="card">
+      <button class="btn" id="btn-crear">Crear juego (anfitrión)</button>
+      <button class="btn ghost" id="btn-unirme">Unirme con un PIN</button>
+    </div>
+    <div class="aviso" id="aviso-config" style="display:none">
+      ⚙️ Falta configurar Firebase. Abre el archivo y pega tu <b>firebaseConfig</b> (bloque marcado al inicio del script) — puedes reutilizar el proyecto del Cronograma o Evaluación de Desempeño.
+    </div>
+    <p class="pie">El anfitrión proyecta la pantalla; los participantes escanean el QR desde su celular, eligen su avatar con los colores de Faces y aparecen en la sala en tiempo real.</p>
+  </section>
+
+  <!-- LOBBY ANFITRIÓN -->
+  <section class="screen" id="s-lobby">
+    <div class="marca"><span class="logo">FACES</span><small>SALA DE ESPERA</small></div>
+    <div class="lobby-top">
+      <div class="pin-box">
+        <div class="lbl">PIN de la sala</div>
+        <div class="pin" id="lb-pin">------</div>
+        <div class="join-url" id="lb-url"></div>
+      </div>
+      <div id="qr"></div>
+    </div>
+    <div class="cuenta">Participantes conectados <b id="lb-count">0</b></div>
+    <div class="players" id="lb-players"><div class="vacio">Aún nadie se ha unido…</div></div>
+    <button class="btn" id="btn-empezar" style="margin-top:22px" disabled>Empezar el juego</button>
+  </section>
+
+  <!-- UNIRSE (jugador) -->
+  <section class="screen" id="s-join">
+    <div class="marca"><span class="logo">FACES</span><small>UNIRME AL JUEGO</small></div>
+    <div class="card">
+      <label for="j-pin">PIN de la sala</label>
+      <input type="text" id="j-pin" inputmode="numeric" maxlength="6" placeholder="6 dígitos" autocomplete="off">
+      <label for="j-nombre" style="margin-top:16px">Tu nombre</label>
+      <input type="text" id="j-nombre" placeholder="Nombre y apellido" autocomplete="off" maxlength="24">
+
+      <div class="pick-lbl"><label>Elige tu color de Faces</label></div>
+      <div class="swatches" id="j-colors"></div>
+      <div class="pick-lbl"><label>Elige tu figura</label></div>
+      <div class="glyphs" id="j-glyphs"></div>
+
+      <div class="preview-av">
+        <div class="av" id="j-prev-av"></div>
+        <div class="txt" id="j-prev-nm">Tu avatar</div>
+      </div>
+      <button class="btn" id="btn-entrar">Entrar a la sala</button>
+      <div class="estado no" id="j-error" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ESPERA (jugador) -->
+  <section class="screen" id="s-wait">
+    <div class="marca"><span class="logo">FACES</span><small>SALA</small></div>
+    <div class="center" style="margin:auto">
+      <div class="av" id="w-av" style="width:88px;height:88px;margin:0 auto 16px"></div>
+      <h2 style="font-weight:900;font-size:28px" id="w-nm">¡Estás dentro!</h2>
+      <p class="subt">Espera a que el anfitrión inicie el juego…</p>
+    </div>
+  </section>
+
+  <!-- PREGUNTA (anfitrión y jugador comparten) -->
+  <section class="screen" id="s-quiz">
+    <div class="barra-top">
+      <span class="cont" id="q-cont">1 / 8</span>
+      <span class="pill" id="q-info">—</span>
+    </div>
+    <div class="timer"><span id="q-bar"></span></div>
+    <span class="cat" id="q-cat">—</span>
+    <div class="pregunta" id="q-texto">…</div>
+    <div class="grid" id="q-ops"></div>
+    <div class="estado" id="q-estado"></div>
+    <div class="explica" id="q-explica" style="display:none"></div>
+    <button class="btn" id="q-next" style="display:none;margin-top:16px">Siguiente</button>
+    <div class="espera" id="q-espera" style="display:none"></div>
+  </section>
+
+  <!-- PODIO -->
+  <section class="screen" id="s-fin">
+    <div class="marca"><span class="logo">FACES</span><small>RESULTADO FINAL</small></div>
+    <div class="medalla">🏆</div>
+    <div class="podio" id="fin-podio"></div>
+    <ol class="rank" id="fin-rank"></ol>
+    <button class="btn sec" id="btn-reinicio" style="margin-top:20px">Volver al inicio</button>
+  </section>
+
+</div>
+
+<script>
+/* ═══════════════════════ 1) CONFIGURA FIREBASE AQUÍ ═══════════════════════
+   Pega la config de tu proyecto (Consola Firebase → Configuración → SDK web).
+   Requiere Realtime Database habilitada. Puedes reutilizar un proyecto existente. */
+const firebaseConfig = {
+  apiKey: "AIzaSyAQJJCoc5bFAKwLZMAwhHwhqxodZaT12fo",
+  authDomain: "reto---faces.firebaseapp.com",
+  databaseURL: "https://reto---faces-default-rtdb.firebaseio.com",
+  projectId: "reto---faces",
+  storageBucket: "reto---faces.firebasestorage.app",
+  messagingSenderId: "116125550495",
+  appId: "1:116125550495:web:56cbbb954079b5c3cc9faa",
+  measurementId: "G-RGMHSG7RXS"
+};
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+const CONFIGURADO = !JSON.stringify(firebaseConfig).includes("PEGA_AQUI");
+let db = null, offset = 0;
+if (CONFIGURADO) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    firebase.auth().signInAnonymously().catch(e => console.error("Auth anónima:", e));
+    db.ref(".info/serverTimeOffset").on("value", s => offset = s.val() || 0);
+  } catch (e) { console.error("Firebase init:", e); }
+} else {
+  document.getElementById("aviso-config").style.display = "block";
+}
+// Garantiza que haya sesión (anónima) antes de leer/escribir en la base.
+function ensureAuth(){
+  if(typeof firebase === "undefined" || !firebase.auth) return Promise.resolve(null);
+  if(firebase.auth().currentUser) return Promise.resolve(firebase.auth().currentUser);
+  return firebase.auth().signInAnonymously().then(c => c.user).catch(() => null);
+}
+const ahora = () => Date.now() + offset;
+
+/* ═══════════════════════ BANCO DE PREGUNTAS (Manual App FACES) ═══════════════════════ */
+const BANCO = [
+  { cat:"Ingreso", q:"¿Qué usuario y contraseña se usan para ingresar a la App FACES?", o:["Un usuario nuevo que crea el asesor","Los mismos del sistema Softbank de escritorio","La cédula y la fecha de nacimiento","Un código que envía el Jefe de Agencia"], c:1, e:"Son las mismas credenciales del Softbank de escritorio; cada asesor tiene un celular con código único." },
+  { cat:"Ingreso", q:"¿En qué modalidades funciona la App de Recolección de Información?", o:["Solo ON LINE","OFF LINE y ON LINE","Solo en oficina por WiFi","Solo con señal 4G"], c:1, e:"Opera OFF LINE y ON LINE: es funcional en cualquier entorno de campo." },
+  { cat:"Dashboard", q:"El indicador «CER > 1 día» corresponde a…", o:["Créditos entregados en el día","Cartera en riesgo a más de un día de vencida","Clientes nuevos del mes","El cupo de crédito recomendado"], c:1, e:"CER > 1 día = cartera en riesgo con más de un día de vencimiento." },
+  { cat:"Hoja de Ruta", q:"Un «Cliente Inactivo» dejó de requerir financiamiento por más de…", o:["7 días","15 días","30 días tras cancelar su última operación","90 días"], c:2, e:"Inactivo: más de 30 días sin requerir financiamiento tras cancelar su última operación vigente." },
+  { cat:"Gestión", q:"Para habilitar el botón «Guardar» en la pestaña Gestión es indispensable…", o:["Adjuntar foto del cliente","Fijar la ubicación actual (GPS)","Escribir un comentario","Que lo autorice el Jefe de Agencia"], c:1, e:"El botón Guardar solo se habilita al fijar la ubicación, dejando trazabilidad de la visita." },
+  { cat:"Gestión", q:"¿Cuándo una gestión se considera realmente EFECTIVA?", o:["Con solo llegar al lugar","Cuando se ubica al cliente y se entabla comunicación","Cuando se toma una foto del negocio","Cuando se marca en el mapa"], c:1, e:"No basta con llegar: es efectiva si se ubica al cliente y se entabla comunicación con él." },
+  { cat:"Promoción", q:"Si eliges el estado «Iniciar Promoción», al guardar la app…", o:["Cierra la sesión","Lleva automáticamente al Registro de Promoción","Genera la solicitud de crédito","Notifica al garante"], c:1, e:"Con «Iniciar Promoción» la app conduce automáticamente al módulo de Registro de Promoción." },
+  { cat:"Promoción", q:"¿Cuántos dígitos valida la App para la cédula?", o:["8","9","10","13"], c:2, e:"La app valida cédula de 10 dígitos (y el teléfono también debe tener 10)." },
+  { cat:"Promoción", q:"¿Cuáles son los Tipos de Capacitación de la app?", o:["Ventas, Marketing y Finanzas","Salud, Tecnología, Producción, Administrativo o Ninguna","Básico, Intermedio y Avanzado","Presencial y Virtual"], c:1, e:"Salud, Tecnología, Producción, Administrativo o Ninguna." },
+  { cat:"Promoción", q:"¿Cuándo NO se considera realizada una promoción?", o:["Si el cliente no acepta de inmediato","Si no entrega datos básicos: cédula, dirección y teléfono","Si la visita es corta","Si no se toma foto"], c:1, e:"Sin datos básicos (cédula, dirección, teléfono) no cuenta como promoción ni como gestión." },
+  { cat:"Asesoría", q:"La cuota que muestra la calculadora de la app es…", o:["El valor exacto y definitivo","Una cuota estimada que puede no coincidir al centavo con la tabla final","El promedio del sector","Solo el interés"], c:1, e:"Es estimada; debe informarse al cliente que puede no coincidir al centavo con la tabla del desembolso." },
+  { cat:"Asesoría", q:"En el campo «Observación» (origen de la asesoría), una opción válida es…", o:["Promoción Directa","Cliente moroso","Reactivación express","Convenio bancario"], c:0, e:"Observación: Promoción Directa, Referido, Cliente y Otras Fuentes." },
+  { cat:"Asesoría", q:"La acción complementaria «Consulta Buró» sirve para…", o:["Ver requisitos del producto","Verificar el comportamiento crediticio en el buró","Calcular la cuota","Registrar capacitación"], c:1, e:"Verifica el comportamiento crediticio del cliente en el buró." },
+  { cat:"Solicitud", q:"Sobre la pestaña «Situación PPI»…", o:["Es opcional","Todas las preguntas son obligatorias; sin responderlas no se guarda","Solo aplica a créditos > $8.000","La llena el sistema"], c:1, e:"En PPI todas las preguntas son obligatorias; si falta alguna no se guarda la solicitud." },
+  { cat:"Solicitud", q:"Al capturar la ubicación de la microempresa, la app exige antes de la cámara…", o:["Escribir el nombre del negocio","Fijar la ubicación GPS actual","Cargar la cédula escaneada","Confirmar con el garante"], c:1, e:"Exige fijar el GPS antes de habilitar la cámara; sin esos datos la solicitud no avanza." },
+  { cat:"Imágenes", q:"En la foto del hogar de un crédito ORIGINAL debe…", o:["Tomarse en vertical","Aparecer el microempresario con rostro visible","No salir ninguna persona","Tomarse de noche"], c:1, e:"En originales el microempresario debe aparecer y distinguirse su rostro; el celular en horizontal." },
+  { cat:"Solicitud", q:"El campo «Destino de inversión» permite hasta…", o:["50 caracteres","120 caracteres","245 caracteres","Sin límite"], c:2, e:"Admite hasta 245 caracteres y debe describir con detalle el uso del crédito." },
+  { cat:"Mora", q:"En Clientes en Mora, la «Acción» de cobranza se escoge…", o:["Al azar","Según los días de mora, conforme la metodología de cobranzas","Siempre Notificación FACES 1","Según lo que pida el cliente"], c:1, e:"Se selecciona según los días de mora, de acuerdo con la metodología institucional." },
+  { cat:"Mora", q:"El botón «REFRESCAR IMÁGENES» en la pestaña Imágenes de Mora…", o:["Descarga fotos del core","No realiza ninguna acción, no debe utilizarse","Borra fotos antiguas","Las envía al Jefe de Agencia"], c:1, e:"En Clientes en Mora ese botón no ejecuta ninguna acción; no debe utilizarse." },
+  { cat:"Consulta Saldos", q:"Para que la búsqueda por NOMBRE sea exitosa se deben ingresar…", o:["Solo el primer nombre","Solo el apellido","Nombres y apellidos completos","El número de operación"], c:2, e:"Requiere nombres y apellidos completos; de lo contrario no arroja resultado." },
+  { cat:"Mapa Clientes", q:"En el Mapa de Clientes, las etiquetas naranja y rojo indican…", o:["Clientes nuevos","Créditos con cuotas vencidas","Clientes fuera de zona","Puntos de pago"], c:1, e:"Naranja y rojo destacan créditos vencidos; los verdes están al día." },
+  { cat:"Puntos de Pago", q:"¿Qué es el «Cupo de Transacción» de un punto de pago?", o:["El horario del local","El monto máximo que procesa por transacción","La comisión del establecimiento","La distancia al cliente"], c:1, e:"Limita el monto máximo por transacción; si la cuota lo excede se fracciona o se usa otro punto." },
+  { cat:"Puntos de Pago", q:"Al actualizar o eliminar un Punto de Pago, el campo «Motivo» es…", o:["Opcional","Obligatorio, deja trazabilidad del cambio","Solo para eliminar","Un comentario sin efecto"], c:1, e:"Es obligatorio en toda actualización o eliminación y deja trazabilidad en la base." },
+  { cat:"Notificaciones", q:"La pestaña «Incumplidos» muestra…", o:["Créditos aprobados hoy","Clientes que no cumplieron su compromiso de pago en la fecha pactada","Visitas de la semana","Clientes precalificados"], c:1, e:"Lista a los clientes que no cumplieron el compromiso de pago; es la vista prioritaria." },
+  { cat:"Operativo", q:"Sobre la Sincronización de catálogos, la recomendación es…", o:["Una sola vez al instalar","Ejecutarla a diario y siempre que se use un equipo diferente","Solo cuando falla la app","Nunca"], c:1, e:"Sincronizar al usar un equipo nuevo y, de preferencia, a diario." }
+];
+
+/* ═══════════════════════ AVATARES (colores Faces) ═══════════════════════ */
+const COLORS = ["#C8102E","#8E0B20","#58595B","#8A8B8F","#2E2F33","#E8A400","#1D6FB8","#2E9E5B"];
+const GLYPHS = [
+  '<path d="M12 2 22 21 2 21z"/>',
+  '<path d="M12 2 22 12 12 22 2 12z"/>',
+  '<circle cx="12" cy="12" r="10"/>',
+  '<rect x="3" y="3" width="18" height="18" rx="4"/>',
+  '<path d="M12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9z"/>',
+  '<path d="M12 21C6 16 3 12.5 3 8.8 3 6 5 4 7.5 4 9.3 4 11 5 12 6.5 13 5 14.7 4 16.5 4 19 4 21 6 21 8.8 21 12.5 18 16 12 21z"/>'
+];
+const SHAPES_ANS = [GLYPHS[0],GLYPHS[1],GLYPHS[2],GLYPHS[3]]; // triángulo/rombo/círculo/cuadrado
+function avatarSVG(color, gi, dark){
+  const fill = dark ? "#1C1D21" : "#fff";
+  return `<div class="av" style="background:${color}"><svg viewBox="0 0 24 24" fill="${fill}">${GLYPHS[gi]}</svg></div>`;
+}
+function avatarInner(color, gi, dark){
+  const fill = dark ? "#1C1D21" : "#fff";
+  return `<svg viewBox="0 0 24 24" fill="${fill}" style="width:60%;height:60%">${GLYPHS[gi]}</svg>`;
+}
+
+/* ═══════════════════════ NAVEGACIÓN ═══════════════════════ */
+const $ = s => document.querySelector(s);
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
+function show(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on")); $("#"+id).classList.add("on"); window.scrollTo(0,0); }
+function pin6(){ return String(Math.floor(100000 + Math.random()*900000)); }
+function needFB(){ if(!CONFIGURADO){ alert("Primero pega tu configuración de Firebase en el archivo."); return true; } return false; }
+
+const T_MAX = 20;
+let ROOM=null, ROLE=null, MYID=null, MYAV=null, QUIZ=null, myTimer=null, hostTimer=null, answeredThis=false;
+
+/* ═══════════════════════ ANFITRIÓN ═══════════════════════ */
+$("#btn-crear").addEventListener("click", async ()=>{
+  if(needFB()) return;
+  await ensureAuth();
+  ROLE="host"; ROOM=pin6();
+  const order = shuffle([...Array(BANCO.length).keys()]).slice(0,8);
+  QUIZ = order.map(i=>{
+    const p=BANCO[i];
+    const opts=shuffle(p.o.map((t,k)=>({t,ok:k===p.c})));
+    return { cat:p.cat, q:p.q, e:p.e, opts:opts.map(o=>o.t), correct:opts.findIndex(o=>o.ok) };
+  });
+  await db.ref("rooms/"+ROOM).set({
+    meta:{ state:"lobby", qIndex:0, phase:"question", qStartAt:0, total:QUIZ.length },
+    quiz:QUIZ
+  });
+  db.ref("rooms/"+ROOM).onDisconnect().remove();
+  abrirLobby();
+});
+
+function abrirLobby(){
+  show("s-lobby");
+  $("#lb-pin").textContent = ROOM;
+  const url = location.origin + location.pathname + "?pin=" + ROOM;
+  $("#lb-url").textContent = url;
+  $("#qr").innerHTML="";
+  new QRCode($("#qr"), { text:url, width:170, height:170, colorDark:"#1C1D21", colorLight:"#ffffff", correctLevel:QRCode.CorrectLevel.M });
+
+  db.ref("rooms/"+ROOM+"/players").on("value", snap=>{
+    const players = snap.val() || {};
+    const arr = Object.entries(players);
+    $("#lb-count").textContent = arr.length;
+    const cont = $("#lb-players");
+    if(!arr.length){ cont.innerHTML='<div class="vacio">Aún nadie se ha unido…</div>'; }
+    else{
+      cont.innerHTML = arr.map(([id,p])=>`
+        <div class="pl">
+          <div class="av" style="background:${p.color}">${avatarInner(p.color,p.glyph,p.glyph===5)}</div>
+          <div class="nm">${escapeHtml(p.name)}</div>
+        </div>`).join("");
+    }
+    $("#btn-empezar").disabled = arr.length===0;
+  });
+}
+
+$("#btn-empezar").addEventListener("click", ()=>{ irPregunta(0); });
+
+function irPregunta(i){
+  db.ref("rooms/"+ROOM+"/meta").update({ state:"playing", phase:"question", qIndex:i, qStartAt:firebase.database.ServerValue.TIMESTAMP });
+}
+
+// El anfitrión escucha su propia sala para renderizar y controlar tiempos
+function hostBind(){
+  db.ref("rooms/"+ROOM+"/meta").on("value", snap=>{
+    const m = snap.val(); if(!m) return;
+    if(m.state==="podium"){ renderPodio(); return; }
+    if(m.state!=="playing") return;
+    renderPreguntaHost(m);
+  });
+}
+
+function renderPreguntaHost(m){
+  const p = QUIZ[m.qIndex];
+  show("s-quiz");
+  $("#q-cont").textContent = `${m.qIndex+1} / ${QUIZ.length}`;
+  $("#q-cat").textContent = p.cat;
+  $("#q-texto").textContent = p.q;
+  $("#q-estado").textContent=""; $("#q-explica").style.display="none";
+  $("#q-next").style.display="none"; $("#q-espera").style.display="none";
+
+  const cont = $("#q-ops"); cont.innerHTML="";
+  p.opts.forEach((t,k)=>{
+    cont.insertAdjacentHTML("beforeend",
+      `<div class="op" data-k="${k}"><svg class="fig" viewBox="0 0 24 24" fill="${k===2?'#1C1D21':'#fff'}">${SHAPES_ANS[k]}</svg><span>${escapeHtml(t)}</span><span class="cnt" data-c="${k}">0</span></div>`);
+  });
+
+  // conteo de respuestas en vivo
+  db.ref("rooms/"+ROOM+"/answers/"+m.qIndex).off();
+  db.ref("rooms/"+ROOM+"/answers/"+m.qIndex).on("value", s=>{
+    const a = s.val() || {}; const vals = Object.values(a);
+    $("#q-info").textContent = `${vals.length} respondieron`;
+    if(m.phase==="reveal"){
+      const dist=[0,0,0,0]; vals.forEach(v=>{ if(v.choice>=0) dist[v.choice]++; });
+      document.querySelectorAll(".op .cnt").forEach(c=>{ c.textContent = dist[+c.dataset.c]; });
+    }
+  });
+
+  if(m.phase==="question"){
+    $("#q-info").className="pill"; 
+    startBar(m.qStartAt);
+    clearTimeout(hostTimer);
+    const restante = Math.max(0, T_MAX*1000 - (ahora()-m.qStartAt));
+    hostTimer = setTimeout(()=> db.ref("rooms/"+ROOM+"/meta").update({phase:"reveal"}), restante+150);
+  } else { // reveal
+    stopBar();
+    document.querySelectorAll(".op").forEach(o=>{
+      const k=+o.dataset.k; o.classList.add("showcnt");
+      if(k===p.correct) o.classList.add("bien"); else o.classList.add("dim");
+    });
+    $("#q-explica").textContent = "📘 "+p.e; $("#q-explica").style.display="block";
+    const nb=$("#q-next"); nb.style.display="block";
+    nb.textContent = (m.qIndex+1<QUIZ.length) ? "Siguiente pregunta" : "Ver podio";
+    nb.onclick = ()=>{ (m.qIndex+1<QUIZ.length) ? irPregunta(m.qIndex+1) : db.ref("rooms/"+ROOM+"/meta").update({state:"podium"}); };
+  }
+}
+
+/* ═══════════════════════ JUGADOR ═══════════════════════ */
+$("#btn-unirme").addEventListener("click", ()=>{ if(needFB()) return; ROLE="player"; abrirJoin(); });
+
+function abrirJoin(pin){
+  show("s-join");
+  // colores
+  const cw=$("#j-colors"); cw.innerHTML="";
+  COLORS.forEach((c,i)=>{ const d=document.createElement("div"); d.className="sw"+(i===0?" sel":""); d.style.background=c; d.dataset.c=c; d.onclick=()=>{cw.querySelectorAll(".sw").forEach(x=>x.classList.remove("sel"));d.classList.add("sel");prevAv();}; cw.appendChild(d); });
+  // glifos
+  const gw=$("#j-glyphs"); gw.innerHTML="";
+  GLYPHS.forEach((g,i)=>{ const d=document.createElement("div"); d.className="gl"+(i===0?" sel":""); d.dataset.g=i; d.innerHTML=`<svg viewBox="0 0 24 24">${g}</svg>`; d.onclick=()=>{gw.querySelectorAll(".gl").forEach(x=>x.classList.remove("sel"));d.classList.add("sel");prevAv();}; gw.appendChild(d); });
+  if(pin){ $("#j-pin").value=pin; }
+  $("#j-nombre").addEventListener("input", prevAv);
+  prevAv();
+}
+function selColor(){ const e=$("#j-colors .sw.sel"); return e?e.dataset.c:COLORS[0]; }
+function selGlyph(){ const e=$("#j-glyphs .gl.sel"); return e?+e.dataset.g:0; }
+function prevAv(){
+  const c=selColor(), g=selGlyph();
+  $("#j-prev-av").style.background=c;
+  $("#j-prev-av").innerHTML=avatarInner(c,g,g===5||c==="#E8A400");
+  $("#j-prev-nm").textContent = ($("#j-nombre").value||"").trim() || "Tu avatar";
+}
+
+$("#btn-entrar").addEventListener("click", async ()=>{
+  const pin=($("#j-pin").value||"").trim(), name=($("#j-nombre").value||"").trim();
+  $("#j-error").textContent="";
+  if(pin.length!==6){ $("#j-error").textContent="El PIN debe tener 6 dígitos."; return; }
+  if(!name){ $("#j-error").textContent="Escribe tu nombre."; return; }
+  await ensureAuth();
+  const roomSnap = await db.ref("rooms/"+pin).get();
+  if(!roomSnap.exists()){ $("#j-error").textContent="No existe una sala con ese PIN."; return; }
+  ROOM=pin; QUIZ=roomSnap.val().quiz;
+  MYAV={ color:selColor(), glyph:selGlyph() };
+  const ref = db.ref("rooms/"+ROOM+"/players").push();
+  MYID = ref.key;
+  await ref.set({ name, color:MYAV.color, glyph:MYAV.glyph, score:0, joinedAt:firebase.database.ServerValue.TIMESTAMP });
+  ref.onDisconnect().remove();
+  // pantalla de espera
+  $("#w-av").style.background=MYAV.color; $("#w-av").innerHTML=avatarInner(MYAV.color,MYAV.glyph,MYAV.glyph===5||MYAV.color==="#E8A400");
+  $("#w-nm").textContent = "¡Estás dentro, "+name+"!";
+  show("s-wait");
+  playerBind();
+});
+
+function playerBind(){
+  db.ref("rooms/"+ROOM+"/meta").on("value", snap=>{
+    const m=snap.val(); if(!m){ alert("La sala fue cerrada por el anfitrión."); location.reload(); return; }
+    if(m.state==="lobby"){ show("s-wait"); return; }
+    if(m.state==="podium"){ renderPodio(); return; }
+    if(m.state==="playing") renderPreguntaPlayer(m);
+  });
+}
+
+function renderPreguntaPlayer(m){
+  const p=QUIZ[m.qIndex];
+  show("s-quiz");
+  $("#q-cont").textContent=`${m.qIndex+1} / ${QUIZ.length}`;
+  $("#q-cat").textContent=p.cat; $("#q-texto").textContent=p.q;
+  $("#q-estado").textContent=""; $("#q-estado").className="estado";
+  $("#q-explica").style.display="none"; $("#q-next").style.display="none"; $("#q-espera").style.display="none";
+  $("#q-info").textContent=""; 
+
+  const cont=$("#q-ops"); cont.innerHTML="";
+  p.opts.forEach((t,k)=>{
+    const b=document.createElement("button"); b.className="op"; b.dataset.k=k;
+    b.innerHTML=`<svg class="fig" viewBox="0 0 24 24" fill="${k===2?'#1C1D21':'#fff'}">${SHAPES_ANS[k]}</svg><span>${escapeHtml(t)}</span>`;
+    cont.appendChild(b);
+  });
+
+  if(m.phase==="question"){
+    answeredThis=false;
+    startBar(m.qStartAt);
+    document.querySelectorAll(".op").forEach(b=>{
+      b.onclick=()=>enviarRespuesta(+b.dataset.k, m.qIndex, m.qStartAt, p.correct);
+    });
+    clearTimeout(myTimer);
+    const restante=Math.max(0, T_MAX*1000-(ahora()-m.qStartAt));
+    myTimer=setTimeout(()=>{ if(!answeredThis) enviarRespuesta(-1,m.qIndex,m.qStartAt,p.correct); }, restante+50);
+  } else { // reveal: mostrar resultado propio
+    stopBar();
+    db.ref("rooms/"+ROOM+"/answers/"+m.qIndex+"/"+MYID).get().then(s=>{
+      const mine=s.val();
+      document.querySelectorAll(".op").forEach(o=>{
+        const k=+o.dataset.k;
+        if(k===p.correct) o.classList.add("bien");
+        else if(mine && mine.choice===k) o.classList.add("mal");
+        else o.classList.add("dim");
+      });
+      const est=$("#q-estado");
+      if(mine && mine.correct){ est.textContent=`¡Correcto!  +${mine.points} pts`; est.className="estado ok"; }
+      else if(mine && mine.choice===-1){ est.textContent="⏱ Se acabó el tiempo"; est.className="estado no"; }
+      else{ est.textContent="Incorrecto"; est.className="estado no"; }
+    });
+    $("#q-explica").textContent="📘 "+p.e; $("#q-explica").style.display="block";
+    $("#q-espera").style.display="block"; $("#q-espera").textContent="Espera al anfitrión…";
+  }
+}
+
+function enviarRespuesta(choice, qIndex, qStartAt, correct){
+  if(answeredThis) return; answeredThis=true;
+  clearTimeout(myTimer); stopBar();
+  const elapsed = ahora()-qStartAt;
+  const restante = Math.max(0, T_MAX*1000-elapsed)/1000;
+  const acierto = choice===correct;
+  const points = acierto ? Math.round(500 + 500*(restante/T_MAX)) : 0;
+  db.ref("rooms/"+ROOM+"/answers/"+qIndex+"/"+MYID).set({ choice, correct:acierto, points });
+  if(points>0) db.ref("rooms/"+ROOM+"/players/"+MYID+"/score").transaction(v=>(v||0)+points);
+  // feedback inmediato + bloqueo
+  document.querySelectorAll(".op").forEach(o=>{ o.onclick=null; if(+o.dataset.k!==choice) o.classList.add("dim"); });
+  $("#q-espera").style.display="block"; $("#q-espera").textContent = "Respuesta enviada. Espera el resultado…";
+}
+
+/* ═══════════════════════ PODIO / RANKING ═══════════════════════ */
+function renderPodio(){
+  db.ref("rooms/"+ROOM+"/players").get().then(s=>{
+    const players=s.val()||{};
+    const arr=Object.entries(players).map(([id,p])=>({id,...p,score:p.score||0})).sort((a,b)=>b.score-a.score);
+    show("s-fin");
+    // podio top 3
+    const podio=$("#fin-podio"); podio.innerHTML="";
+    const heights=[110,86,64], medals=["🥇","🥈","🥉"], top=arr.slice(0,3);
+    // orden visual 2-1-3
+    const visual=[top[1],top[0],top[2]].filter(Boolean);
+    const hmap=new Map([[top[0]?.id,110],[top[1]?.id,86],[top[2]?.id,64]]);
+    visual.forEach(pl=>{
+      const rankPos=arr.findIndex(x=>x.id===pl.id);
+      podio.insertAdjacentHTML("beforeend",`
+        <div class="col">
+          <div>${["🥇","🥈","🥉"][rankPos]||""}</div>
+          <div class="av" style="background:${pl.color}">${avatarInner(pl.color,pl.glyph,pl.glyph===5||pl.color==="#E8A400")}</div>
+          <div class="nm">${escapeHtml(pl.name)}</div>
+          <div class="sc">${pl.score.toLocaleString("es-EC")} pts</div>
+          <div class="bar" style="height:${hmap.get(pl.id)||64}px"></div>
+        </div>`);
+    });
+    // lista completa
+    const ol=$("#fin-rank"); ol.innerHTML="";
+    arr.forEach((pl,i)=>{
+      ol.insertAdjacentHTML("beforeend",`
+        <li class="${pl.id===MYID?'me':''}">
+          <span class="pos">${i+1}</span>
+          <div class="av" style="background:${pl.color}">${avatarInner(pl.color,pl.glyph,pl.glyph===5||pl.color==="#E8A400")}</div>
+          <span class="nm">${escapeHtml(pl.name)}</span>
+          <span class="sc">${pl.score.toLocaleString("es-EC")}</span>
+        </li>`);
+    });
+  });
+}
+
+/* ═══════════════════════ TIMER (barra) ═══════════════════════ */
+let barInt=null;
+function startBar(qStartAt){
+  const bar=$("#q-bar");
+  const tick=()=>{ const rem=Math.max(0, T_MAX*1000-(ahora()-qStartAt)); bar.style.transition="width .25s linear"; bar.style.width=(rem/(T_MAX*1000)*100)+"%"; };
+  tick(); clearInterval(barInt); barInt=setInterval(tick,250);
+}
+function stopBar(){ clearInterval(barInt); }
+
+/* ═══════════════════════ UTILES ═══════════════════════ */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+$("#btn-reinicio").addEventListener("click", ()=> location.href = location.origin+location.pathname );
+$("#j-pin").addEventListener("input", e=> e.target.value=e.target.value.replace(/\D/g,"").slice(0,6));
+
+/* Al crear la sala, el anfitrión también se vincula para controlar el juego */
+const _crear = $("#btn-crear").onclick;
+$("#btn-crear").addEventListener("click", ()=>{ setTimeout(hostBind, 400); });
+
+/* ═══════════════════════ ENTRADA POR QR (?pin=) ═══════════════════════ */
+window.addEventListener("load", ()=>{
+  // Verifica que las librerías externas (Firebase / QR) hayan cargado.
+  const faltan = [];
+  if(typeof firebase === "undefined") faltan.push("Firebase (www.gstatic.com)");
+  if(typeof QRCode === "undefined")   faltan.push("QRCode (cdnjs.cloudflare.com)");
+  if(faltan.length){
+    const box = document.getElementById("aviso-config");
+    box.style.display = "block";
+    box.innerHTML = "🌐 No se pudieron cargar librerías externas: <b>"+faltan.join(", ")+
+      "</b>. Esto ocurre en vistas previas o redes que bloquean CDNs. En un navegador normal o en GitHub Pages carga con normalidad.";
+    return; // evita usar firebase/QRCode si no existen
+  }
+  const params=new URLSearchParams(location.search);
+  const pin=params.get("pin");
+  if(pin && CONFIGURADO){ ROLE="player"; abrirJoin(pin); }
+});
+</script>
+</body>
+</html>
