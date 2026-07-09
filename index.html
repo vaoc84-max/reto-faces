@@ -704,11 +704,16 @@ window.addEventListener("load", async ()=>{
   const sess=loadSession();
   const vigente = sess && (Date.now()-(sess.ts||0) < 8*3600*1000);   // reanuda hasta 8 horas
 
-  // Reanudar ANFITRIÓN (si reabre sin PIN en la URL)
+  // Reanudar ANFITRIÓN solo si el juego está EN CURSO (pregunta o podio)
   if(vigente && sess.role==="host" && !urlPin){
     await ensureAuth();
     const rs=await db.ref("rooms/"+sess.pin).get();
-    if(rs.exists()){ ROLE="host"; ROOM=sess.pin; QUIZ=rs.val().quiz; if((rs.val().meta||{}).state==="lobby") abrirLobby(); $("#musicBtn").style.display="flex"; hostBind(); return; }
+    const st = rs.exists() ? ((rs.val().meta||{}).state||"lobby") : null;
+    if(st==="playing" || st==="podium"){
+      ROLE="host"; ROOM=sess.pin; QUIZ=rs.val().quiz; if((rs.val().meta||{}).tMax) TMAX=rs.val().meta.tMax; $("#musicBtn").style.display="flex"; hostBind(); return;
+    }
+    // Sala en espera o inexistente: se descarta para empezar limpio
+    if(rs.exists()) db.ref("rooms/"+sess.pin).remove().catch(()=>{});
     clearSession();
   }
   // Reanudar JUGADOR (mismo PIN o al reabrir)
