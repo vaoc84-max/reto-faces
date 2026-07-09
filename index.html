@@ -324,6 +324,9 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<'
 function needFB(){ if(!CONFIGURADO){ alert("Falta configurar Firebase."); return true; } return false; }
 function avImg(idx){ return `<img class="avatar" src="${AVATARS[idx]||AVATARS[0]}" alt="">`; }
 function shortTxt(t){ return t.length>34 ? t.slice(0,32)+"…" : t; }
+function saveSession(o){ try{ localStorage.setItem("retofaces", JSON.stringify(o)); }catch(e){} }
+function loadSession(){ try{ return JSON.parse(localStorage.getItem("retofaces")||"null"); }catch(e){ return null; } }
+function clearSession(){ try{ localStorage.removeItem("retofaces"); }catch(e){} }
 
 const T_MAX = 20;
 let ROOM=null, ROLE=null, MYID=null, MYAV=0, QUIZ=null, hostTimer=null, myTimer=null, answeredThis=false, tickedAt=99;
@@ -340,7 +343,7 @@ function startBg(){ initAudio(); if(!AC||bgOn)return; bgOn=true; if(AC.state==='
 function toggleMute(){ musicMuted=!musicMuted; if(bgGain&&AC) bgGain.gain.linearRampToValueAtTime(musicMuted?0:0.9,AC.currentTime+0.2); $("#musicBtn").textContent=musicMuted?'🔇':'🔊'; }
 function fanfare(){ if(musicMuted)return; initAudio(); if(!AC)return; if(AC.state==='suspended')AC.resume(); const t=AC.currentTime+0.03; [523.25,659.25,783.99,1046.50].forEach((f,i)=>tone(f,t+i*0.13,0.5,'square',0.16,AC.destination)); tone(1046.50,t+0.55,0.9,'sawtooth',0.10,AC.destination); }
 function tick(){ if(!AC||musicMuted)return; tone(1320,AC.currentTime,0.07,'square',0.10,AC.destination); }
-$("#musicBtn").addEventListener("click", toggleMute);
+$("#musicBtn").addEventListener("click", ()=>{ if(!AC||!bgOn){ musicMuted=false; startBg(); $("#musicBtn").textContent='🔊'; } else toggleMute(); });
 
 /* ═══════════ CONFETI ═══════════ */
 function confetti(){
@@ -353,11 +356,13 @@ function confetti(){
 /* ═══════════ ANFITRIÓN ═══════════ */
 $("#btn-crear").addEventListener("click", async ()=>{
   if(needFB()) return;
-  ROLE="host"; await ensureAuth(); ROOM=pin6();
+  ROLE="host"; await ensureAuth();
+  const prev=loadSession(); if(prev&&prev.role==="host"&&prev.pin) db.ref("rooms/"+prev.pin).remove().catch(()=>{});
+  ROOM=pin6();
   const order = shuffle([...Array(BANCO.length).keys()]).slice(0,8);
   QUIZ = order.map(i=>{ const p=BANCO[i]; const opts=shuffle(p.o.map((t,k)=>({t,ok:k===p.c}))); return { cat:p.cat,q:p.q,e:p.e,opts:opts.map(o=>o.t),correct:opts.findIndex(o=>o.ok) }; });
   await db.ref("rooms/"+ROOM).set({ meta:{state:"lobby",qIndex:0,phase:"question",qStartAt:0,total:QUIZ.length}, quiz:QUIZ });
-  db.ref("rooms/"+ROOM).onDisconnect().remove();
+  saveSession({role:"host",pin:ROOM,ts:Date.now()});
   startBg(); abrirLobby(); hostBind();
 });
 
@@ -369,7 +374,7 @@ function abrirLobby(){
   $("#qr").innerHTML="";
   new QRCode($("#qr"), { text:url, width:170, height:170, colorDark:"#1C1D21", colorLight:"#ffffff", correctLevel:QRCode.CorrectLevel.M });
   db.ref("rooms/"+ROOM+"/players").on("value", snap=>{
-    const arr=Object.entries(snap.val()||{});
+    const arr=Object.entries(snap.val()||{}).filter(([id,p])=>p&&p.name);
     $("#lb-count").textContent = arr.length;
     $("#lb-players").innerHTML = arr.length ? arr.map(([id,p])=>`<div class="pl">${avImg(p.avatar)}<div class="nm">${escapeHtml(p.name)}</div></div>`).join("") : '<div class="vacio">Aún nadie se ha unido…</div>';
     $("#btn-empezar").disabled = arr.length===0;
@@ -416,7 +421,7 @@ function renderReveal(m, role){
   ]).then(([aS,pS])=>{
     const ans=aS.val()||{};
     const dist=[0,0,0,0]; Object.values(ans).forEach(v=>{ if(v.choice>=0)dist[v.choice]++; });
-    const players=Object.entries(pS.val()||{}).map(([id,x])=>({id,...x,score:x.score||0})).sort((a,b)=>b.score-a.score);
+    const players=Object.entries(pS.val()||{}).map(([id,x])=>({id,...x,score:x.score||0})).filter(x=>x.name).sort((a,b)=>b.score-a.score);
     if(role==="host") buildHostReveal(m,p,dist,players);
     else buildPlayerReveal(m,p,ans[MYID],players);
   });
@@ -488,13 +493,23 @@ $("#btn-entrar").addEventListener("click", async ()=>{
   $("#j-error").textContent="";
   if(pin.length!==6){ $("#j-error").textContent="El PIN debe tener 6 dígitos."; return; }
   if(!name){ $("#j-error").textContent="Escribe tu nombre."; return; }
+  $("#btn-entrar").disabled=true;
   await ensureAuth();
   const roomSnap=await db.ref("rooms/"+pin).get();
-  if(!roomSnap.exists()){ $("#j-error").textContent="No existe una sala con ese PIN."; return; }
+  if(!roomSnap.exists()){ $("#j-error").textContent="No existe una sala con ese PIN."; $("#btn-entrar").disabled=false; return; }
   ROOM=pin; QUIZ=roomSnap.val().quiz;
-  const ref=db.ref("rooms/"+ROOM+"/players").push(); MYID=ref.key;
-  await ref.set({ name, avatar:MYAV, score:0, joinedAt:firebase.database.ServerValue.TIMESTAMP });
-  ref.onDisconnect().remove();
+  const sess=loadSession();
+  if(sess&&sess.role==="player"&&sess.pin===pin&&sess.playerId){
+    MYID=sess.playerId;
+    const pn=await db.ref("rooms/"+ROOM+"/players/"+MYID).get();
+    if(pn.exists()){ MYAV=pn.val().avatar; }
+    else await db.ref("rooms/"+ROOM+"/players/"+MYID).set({ name, avatar:MYAV, score:0, joinedAt:firebase.database.ServerValue.TIMESTAMP });
+  } else {
+    const ref=db.ref("rooms/"+ROOM+"/players").push(); MYID=ref.key;
+    await ref.set({ name, avatar:MYAV, score:0, joinedAt:firebase.database.ServerValue.TIMESTAMP });
+  }
+  saveSession({role:"player",pin:ROOM,playerId:MYID,name,avatar:MYAV,ts:Date.now()});
+  $("#btn-entrar").disabled=false;
   $("#w-av").src=AVATARS[MYAV]; $("#w-nm").textContent="¡Estás dentro, "+name+"!";
   show("s-wait"); playerBind();
 });
@@ -536,7 +551,7 @@ function enviar(choice,qIndex,qStartAt,correct){
 /* ═══════════ PODIO ═══════════ */
 function renderPodio(){
   db.ref("rooms/"+ROOM+"/players").get().then(s=>{
-    const arr=Object.entries(s.val()||{}).map(([id,p])=>({id,...p,score:p.score||0})).sort((a,b)=>b.score-a.score);
+    const arr=Object.entries(s.val()||{}).map(([id,p])=>({id,...p,score:p.score||0})).filter(x=>x.name).sort((a,b)=>b.score-a.score);
     show("s-fin");
     const top=arr.slice(0,3);
     const podio=$("#fin-podio"); podio.innerHTML="";
@@ -563,17 +578,41 @@ function startBar(qStartAt,isHost){
 function stopBar(){ clearInterval(barInt); }
 
 /* ═══════════ VARIOS ═══════════ */
-$("#btn-reinicio").addEventListener("click", ()=> location.href=location.origin+location.pathname );
+$("#btn-reinicio").addEventListener("click", ()=>{ if(ROLE==="host"&&ROOM) db.ref("rooms/"+ROOM).remove().catch(()=>{}); clearSession(); location.href=location.origin+location.pathname; });
 $("#j-pin").addEventListener("input", e=> e.target.value=e.target.value.replace(/\D/g,"").slice(0,6));
-window.addEventListener("load", ()=>{
+window.addEventListener("load", async ()=>{
   const faltan=[];
   if(typeof firebase==="undefined") faltan.push("Firebase (www.gstatic.com)");
   if(typeof QRCode==="undefined") faltan.push("QRCode (cdnjs.cloudflare.com)");
   const box=$("#aviso-config");
   if(!CONFIGURADO){ box.style.display="block"; box.innerHTML="⚙️ Falta configurar Firebase (bloque al inicio del script)."; return; }
   if(faltan.length){ box.style.display="block"; box.innerHTML="🌐 No se pudieron cargar librerías externas: <b>"+faltan.join(", ")+"</b>. En un navegador normal o en GitHub Pages carga con normalidad."; return; }
-  const pin=new URLSearchParams(location.search).get("pin");
-  if(pin){ ROLE="player"; abrirJoin(pin); }
+
+  const urlPin=new URLSearchParams(location.search).get("pin");
+  const sess=loadSession();
+  const vigente = sess && (Date.now()-(sess.ts||0) < 8*3600*1000);   // reanuda hasta 8 horas
+
+  // Reanudar ANFITRIÓN (si reabre sin PIN en la URL)
+  if(vigente && sess.role==="host" && !urlPin){
+    await ensureAuth();
+    const rs=await db.ref("rooms/"+sess.pin).get();
+    if(rs.exists()){ ROLE="host"; ROOM=sess.pin; QUIZ=rs.val().quiz; if((rs.val().meta||{}).state==="lobby") abrirLobby(); $("#musicBtn").style.display="flex"; hostBind(); return; }
+    clearSession();
+  }
+  // Reanudar JUGADOR (mismo PIN o al reabrir)
+  if(vigente && sess.role==="player" && (!urlPin || urlPin===sess.pin)){
+    await ensureAuth();
+    const rs=await db.ref("rooms/"+sess.pin).get();
+    if(rs.exists()){
+      ROLE="player"; ROOM=sess.pin; MYID=sess.playerId; MYAV=sess.avatar; QUIZ=rs.val().quiz;
+      const pn=await db.ref("rooms/"+ROOM+"/players/"+MYID).get();
+      if(!pn.exists()) await db.ref("rooms/"+ROOM+"/players/"+MYID).set({name:sess.name,avatar:sess.avatar,score:0,joinedAt:firebase.database.ServerValue.TIMESTAMP});
+      playerBind(); return;
+    }
+    clearSession();
+  }
+  // Entrada normal por QR
+  if(urlPin){ ROLE="player"; abrirJoin(urlPin); }
 });
 </script>
 </body>
