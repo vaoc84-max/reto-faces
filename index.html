@@ -135,6 +135,11 @@
   .rank .sc{font-weight:900;color:#fff}
   .rank li.me{border-color:var(--rojo);background:rgba(200,16,46,.12)}
 
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .chips.wrap .chipx{font-size:13px;padding:8px 12px}
+  .chipx{padding:11px 16px;border-radius:12px;border:2px solid #3c3e45;background:#191a1e;color:#c9cad0;font-weight:700;font-size:14px;cursor:pointer;transition:.12s;font-family:inherit}
+  .chipx.sel{border-color:var(--rojo);background:rgba(200,16,46,.14);color:#fff}
+  .fila{display:flex;gap:12px}
   #musicBtn{position:fixed;top:14px;right:14px;z-index:50;width:46px;height:46px;border-radius:50%;border:1px solid var(--linea);background:var(--tinta-2);color:#fff;font-size:20px;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.4)}
   #confetti{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
   .conf{position:absolute;top:-20px;width:10px;height:14px;border-radius:2px;animation:caer linear forwards}
@@ -157,6 +162,25 @@
     </div>
     <div class="aviso" id="aviso-config" style="display:none"></div>
     <p class="pie">El anfitrión proyecta la pantalla; los participantes escanean el QR, eligen su avatar y aparecen en la sala en tiempo real.</p>
+  </section>
+
+  <!-- CONFIGURAR -->
+  <section class="screen" id="s-config">
+    <div class="marca"><span class="logo">FACES</span><small>CONFIGURAR EL RETO</small></div>
+    <div class="card">
+      <label>Número de preguntas</label>
+      <div class="chips" id="cfg-n"></div>
+      <label style="margin-top:18px">Segundos por pregunta</label>
+      <div class="chips" id="cfg-sec"></div>
+      <label style="margin-top:18px">Temas incluidos <span id="cfg-count" style="color:#9a9ba0;font-weight:600;font-size:12px"></span></label>
+      <div class="chips wrap" id="cfg-cats"></div>
+      <div class="fila">
+        <button class="btn sec" id="cfg-all" style="margin-top:12px">Todos</button>
+        <button class="btn sec" id="cfg-none" style="margin-top:12px">Ninguno</button>
+      </div>
+      <button class="btn" id="cfg-create" style="margin-top:18px">Crear sala</button>
+      <button class="btn ghost" id="cfg-back" style="margin-top:10px">Volver</button>
+    </div>
   </section>
 
   <!-- LOBBY -->
@@ -286,31 +310,86 @@ function ensureAuth(){
 
 /* ═══════════ BANCO ═══════════ */
 const BANCO = [
-  { cat:"Ingreso", q:"¿Qué usuario y contraseña se usan para ingresar a la App FACES?", o:["Un usuario nuevo que crea el asesor","Los mismos del sistema Softbank de escritorio","La cédula y la fecha de nacimiento","Un código que envía el Jefe de Agencia"], c:1, e:"Son las mismas credenciales del Softbank de escritorio; cada asesor tiene un celular con código único." },
-  { cat:"Ingreso", q:"¿En qué modalidades funciona la App de Recolección de Información?", o:["Solo ON LINE","OFF LINE y ON LINE","Solo en oficina por WiFi","Solo con señal 4G"], c:1, e:"Opera OFF LINE y ON LINE: es funcional en cualquier entorno de campo." },
-  { cat:"Dashboard", q:"El indicador «CER > 1 día» corresponde a…", o:["Créditos entregados en el día","Cartera en riesgo a más de un día de vencida","Clientes nuevos del mes","El cupo de crédito recomendado"], c:1, e:"CER > 1 día = cartera en riesgo con más de un día de vencimiento." },
-  { cat:"Hoja de Ruta", q:"Un «Cliente Inactivo» dejó de requerir financiamiento por más de…", o:["7 días","15 días","30 días tras cancelar su última operación","90 días"], c:2, e:"Inactivo: más de 30 días sin requerir financiamiento tras cancelar su última operación vigente." },
-  { cat:"Gestión", q:"Para habilitar el botón «Guardar» en la pestaña Gestión es indispensable…", o:["Adjuntar foto del cliente","Fijar la ubicación actual (GPS)","Escribir un comentario","Que lo autorice el Jefe de Agencia"], c:1, e:"El botón Guardar solo se habilita al fijar la ubicación, dejando trazabilidad de la visita." },
-  { cat:"Gestión", q:"¿Cuándo una gestión se considera realmente EFECTIVA?", o:["Con solo llegar al lugar","Cuando se ubica al cliente y se entabla comunicación","Cuando se toma una foto del negocio","Cuando se marca en el mapa"], c:1, e:"No basta con llegar: es efectiva si se ubica al cliente y se entabla comunicación con él." },
-  { cat:"Promoción", q:"Si eliges el estado «Iniciar Promoción», al guardar la app…", o:["Cierra la sesión","Lleva automáticamente al Registro de Promoción","Genera la solicitud de crédito","Notifica al garante"], c:1, e:"Con «Iniciar Promoción» la app conduce automáticamente al módulo de Registro de Promoción." },
-  { cat:"Promoción", q:"¿Cuántos dígitos valida la App para la cédula?", o:["8","9","10","13"], c:2, e:"La app valida cédula de 10 dígitos (y el teléfono también debe tener 10)." },
-  { cat:"Promoción", q:"¿Cuáles son los Tipos de Capacitación de la app?", o:["Ventas, Marketing y Finanzas","Salud, Tecnología, Producción, Administrativo o Ninguna","Básico, Intermedio y Avanzado","Presencial y Virtual"], c:1, e:"Salud, Tecnología, Producción, Administrativo o Ninguna." },
-  { cat:"Promoción", q:"¿Cuándo NO se considera realizada una promoción?", o:["Si el cliente no acepta de inmediato","Si no entrega datos básicos: cédula, dirección y teléfono","Si la visita es corta","Si no se toma foto"], c:1, e:"Sin datos básicos (cédula, dirección, teléfono) no cuenta como promoción ni como gestión." },
-  { cat:"Asesoría", q:"La cuota que muestra la calculadora de la app es…", o:["El valor exacto y definitivo","Una cuota estimada que puede no coincidir al centavo con la tabla final","El promedio del sector","Solo el interés"], c:1, e:"Es estimada; debe informarse al cliente que puede no coincidir al centavo con la tabla del desembolso." },
-  { cat:"Asesoría", q:"En el campo «Observación» (origen de la asesoría), una opción válida es…", o:["Promoción Directa","Cliente moroso","Reactivación express","Convenio bancario"], c:0, e:"Observación: Promoción Directa, Referido, Cliente y Otras Fuentes." },
-  { cat:"Asesoría", q:"La acción complementaria «Consulta Buró» sirve para…", o:["Ver requisitos del producto","Verificar el comportamiento crediticio en el buró","Calcular la cuota","Registrar capacitación"], c:1, e:"Verifica el comportamiento crediticio del cliente en el buró." },
-  { cat:"Solicitud", q:"Sobre la pestaña «Situación PPI»…", o:["Es opcional","Todas las preguntas son obligatorias; sin responderlas no se guarda","Solo aplica a créditos > $8.000","La llena el sistema"], c:1, e:"En PPI todas las preguntas son obligatorias; si falta alguna no se guarda la solicitud." },
-  { cat:"Solicitud", q:"Al capturar la ubicación de la microempresa, la app exige antes de la cámara…", o:["Escribir el nombre del negocio","Fijar la ubicación GPS actual","Cargar la cédula escaneada","Confirmar con el garante"], c:1, e:"Exige fijar el GPS antes de habilitar la cámara; sin esos datos la solicitud no avanza." },
-  { cat:"Imágenes", q:"En la foto del hogar de un crédito ORIGINAL debe…", o:["Tomarse en vertical","Aparecer el microempresario con rostro visible","No salir ninguna persona","Tomarse de noche"], c:1, e:"En originales el microempresario debe aparecer y distinguirse su rostro; el celular en horizontal." },
-  { cat:"Solicitud", q:"El campo «Destino de inversión» permite hasta…", o:["50 caracteres","120 caracteres","245 caracteres","Sin límite"], c:2, e:"Admite hasta 245 caracteres y debe describir con detalle el uso del crédito." },
-  { cat:"Mora", q:"En Clientes en Mora, la «Acción» de cobranza se escoge…", o:["Al azar","Según los días de mora, conforme la metodología de cobranzas","Siempre Notificación FACES 1","Según lo que pida el cliente"], c:1, e:"Se selecciona según los días de mora, de acuerdo con la metodología institucional." },
-  { cat:"Mora", q:"El botón «REFRESCAR IMÁGENES» en la pestaña Imágenes de Mora…", o:["Descarga fotos del core","No realiza ninguna acción, no debe utilizarse","Borra fotos antiguas","Las envía al Jefe de Agencia"], c:1, e:"En Clientes en Mora ese botón no ejecuta ninguna acción; no debe utilizarse." },
-  { cat:"Consulta Saldos", q:"Para que la búsqueda por NOMBRE sea exitosa se deben ingresar…", o:["Solo el primer nombre","Solo el apellido","Nombres y apellidos completos","El número de operación"], c:2, e:"Requiere nombres y apellidos completos; de lo contrario no arroja resultado." },
-  { cat:"Mapa Clientes", q:"En el Mapa de Clientes, las etiquetas naranja y rojo indican…", o:["Clientes nuevos","Créditos con cuotas vencidas","Clientes fuera de zona","Puntos de pago"], c:1, e:"Naranja y rojo destacan créditos vencidos; los verdes están al día." },
-  { cat:"Puntos de Pago", q:"¿Qué es el «Cupo de Transacción» de un punto de pago?", o:["El horario del local","El monto máximo que procesa por transacción","La comisión del establecimiento","La distancia al cliente"], c:1, e:"Limita el monto máximo por transacción; si la cuota lo excede se fracciona o se usa otro punto." },
-  { cat:"Puntos de Pago", q:"Al actualizar o eliminar un Punto de Pago, el campo «Motivo» es…", o:["Opcional","Obligatorio, deja trazabilidad del cambio","Solo para eliminar","Un comentario sin efecto"], c:1, e:"Es obligatorio en toda actualización o eliminación y deja trazabilidad en la base." },
-  { cat:"Notificaciones", q:"La pestaña «Incumplidos» muestra…", o:["Créditos aprobados hoy","Clientes que no cumplieron su compromiso de pago en la fecha pactada","Visitas de la semana","Clientes precalificados"], c:1, e:"Lista a los clientes que no cumplieron el compromiso de pago; es la vista prioritaria." },
-  { cat:"Operativo", q:"Sobre la Sincronización de catálogos, la recomendación es…", o:["Una sola vez al instalar","Ejecutarla a diario y siempre que se use un equipo diferente","Solo cuando falla la app","Nunca"], c:1, e:"Sincronizar al usar un equipo nuevo y, de preferencia, a diario." }
+  {"cat": "Ingreso", "q": "¿Qué usuario y contraseña se usan para ingresar a la App FACES?", "o": ["Un usuario nuevo que crea el asesor", "Los mismos del sistema Softbank de escritorio", "La cédula y la fecha de nacimiento", "Un código que envía el Jefe de Agencia"], "c": 1, "e": "Son las mismas credenciales del Softbank de escritorio; cada asesor tiene un celular con código único."},
+  {"cat": "Ingreso", "q": "¿En qué modalidades funciona la App de Recolección de Información?", "o": ["Solo ON LINE", "OFF LINE y ON LINE", "Solo en oficina por WiFi", "Solo con señal 4G"], "c": 1, "e": "Opera OFF LINE y ON LINE: es funcional en cualquier entorno de campo."},
+  {"cat": "Ingreso", "q": "¿Con qué equipo puede usar la app el asesor?", "o": ["Con cualquier celular disponible", "Solo con el celular asignado; no se permiten equipos no asignados", "Con la tablet de la agencia", "Con el computador de escritorio"], "c": 1, "e": "Cada asesor tiene un código único de equipo; no se pueden usar equipos no asignados."},
+  {"cat": "Ingreso", "q": "El ícono del ojo en la pantalla de inicio de sesión sirve para…", "o": ["Escanear el rostro", "Mostrar u ocultar la contraseña digitada", "Recuperar la contraseña", "Cambiar de usuario"], "c": 1, "e": "El ícono del ojo permite mostrar u ocultar lo digitado en la contraseña."},
+  {"cat": "Ingreso", "q": "¿Qué perfiles pueden registrar la gestión desde la app?", "o": ["Solo el Asesor de Crédito", "Asesor de Crédito, Jefe de Agencia, Jefe de Negocios y Jefe Regional", "Únicamente los Jefes de Agencia", "Solo el personal de sistemas"], "c": 1, "e": "La app permite registrar a Asesor de Crédito, Jefe de Agencia, Jefe de Negocios y Jefe Regional."},
+  {"cat": "Dashboard", "q": "El indicador «CER > 1 día» corresponde a…", "o": ["Créditos entregados en el día", "Cartera en riesgo a más de un día de vencida", "Clientes nuevos del mes", "El cupo de crédito recomendado"], "c": 1, "e": "CER > 1 día = cartera en riesgo con más de un día de vencimiento."},
+  {"cat": "Dashboard", "q": "El indicador «Crecimiento de Clientes» muestra…", "o": ["Los clientes nuevos de hoy", "El porcentaje de avance del crecimiento de cartera del mes", "El total histórico de clientes", "La mora acumulada"], "c": 1, "e": "Es el porcentaje de avance del crecimiento de cartera del mes."},
+  {"cat": "Dashboard", "q": "«Monto Total de Crédito Castigado» se refiere a…", "o": ["El monto colocado en el mes", "El monto de cartera castigada del periodo", "El saldo vigente", "El cupo disponible"], "c": 1, "e": "Corresponde al monto de cartera castigada del periodo."},
+  {"cat": "Dashboard", "q": "La barra inferior de navegación del dashboard tiene los botones…", "o": ["Inicio, Menú y Otros", "Perfil, Ajustes y Salir", "Buscar, Mapa y Chat", "Crédito, Mora y Reportes"], "c": 0, "e": "La barra de navegación tiene tres botones: Inicio, Menú y Otros."},
+  {"cat": "Dashboard", "q": "«Saldo de Cartera Vigente» indica el cumplimiento del…", "o": ["Monto colocado en el mes", "Saldo de la cartera al cierre del día", "Número de promociones", "Cupo de puntos de pago"], "c": 1, "e": "Es el cumplimiento del saldo de la cartera al cierre del día."},
+  {"cat": "Menú", "q": "Las tarjetas superiores del Menú Principal (Herramientas) muestran…", "o": ["Publicidad de FACES", "Un contador con los pendientes de cada módulo", "El clima del día", "El saldo del asesor"], "c": 1, "e": "Cada tarjeta principal muestra un contador con los pendientes de ese módulo."},
+  {"cat": "Menú", "q": "¿Cuál de estas es una tarjeta principal con contador del Menú?", "o": ["Consulta Saldos", "Hoja de Ruta", "Mapa Clientes", "Puntos de Pago"], "c": 1, "e": "Las tarjetas principales son Hoja de Ruta, Registro de Promoción, Asesoría y Solicitud; las demás son accesos directos."},
+  {"cat": "Hoja de Ruta", "q": "Un «Cliente Inactivo» dejó de requerir financiamiento por más de…", "o": ["7 días", "15 días", "30 días tras cancelar su última operación", "90 días"], "c": 2, "e": "Inactivo: más de 30 días sin requerir financiamiento tras cancelar su última operación vigente."},
+  {"cat": "Hoja de Ruta", "q": "¿Cuántas categorías de clientes tiene la Hoja de Ruta?", "o": ["Tres", "Cinco", "Siete", "Diez"], "c": 2, "e": "Son siete categorías: Inactivos, Retanqueo, Por Liquidar, Precalificados, en Mora, Castigados y a Actualizar."},
+  {"cat": "Hoja de Ruta", "q": "En cada categoría, los contadores rojo y verde indican…", "o": ["Créditos altos y bajos", "Rojo: pendientes; verde: ya gestionados", "Clientes nuevos y antiguos", "Mora leve y grave"], "c": 1, "e": "El contador rojo son los pendientes y el verde los ya gestionados."},
+  {"cat": "Hoja de Ruta", "q": "«Clientes Por Liquidar» son aquellos cuya operación…", "o": ["Fue castigada", "Está próxima a vencer y son sujetos de nueva colocación", "Tiene mora mayor a 90 días", "Recién se desembolsó"], "c": 1, "e": "Por Liquidar: operación próxima a vencer, sujetos de una nueva colocación."},
+  {"cat": "Hoja de Ruta", "q": "La ficha del cliente en la Hoja de Ruta tiene cuatro pestañas…", "o": ["Principal, Imágenes, Garantes y Gestión", "Datos, Fotos, Mapa y Pago", "Crédito, Mora, Saldo y Cierre", "Inicio, Menú, Otros y Salir"], "c": 0, "e": "Las pestañas son Principal, Imágenes, Garantes y Gestión."},
+  {"cat": "Hoja de Ruta", "q": "«Clientes a Actualizar» son aquellos cuya…", "o": ["Cartera fue castigada", "Información debe ser actualizada en la base", "Operación está por vencer", "Precalificación está vigente"], "c": 1, "e": "A Actualizar: clientes cuya información debe actualizarse en la base."},
+  {"cat": "Gestión", "q": "Para habilitar el botón «Guardar» en la pestaña Gestión es indispensable…", "o": ["Adjuntar foto del cliente", "Fijar la ubicación actual (GPS)", "Escribir un comentario", "Que lo autorice el Jefe de Agencia"], "c": 1, "e": "El botón Guardar solo se habilita al fijar la ubicación, dejando trazabilidad de la visita."},
+  {"cat": "Gestión", "q": "¿Cuándo una gestión se considera realmente EFECTIVA?", "o": ["Con solo llegar al lugar", "Cuando se ubica al cliente y se entabla comunicación", "Cuando se toma una foto del negocio", "Cuando se marca en el mapa"], "c": 1, "e": "No basta con llegar: es efectiva si se ubica al cliente y se entabla comunicación con él."},
+  {"cat": "Gestión", "q": "El estado «Requiere en N días» significa que…", "o": ["El crédito se desembolsa en N días", "Se ubicó al cliente pero no se logró la promoción; muestra interés para días posteriores", "El cliente no existe", "La visita fue cancelada"], "c": 1, "e": "Se entiende que se ubicó al cliente, no se concretó la promoción, pero hay interés para un acercamiento posterior."},
+  {"cat": "Gestión", "q": "¿Cuándo se coloca el estado «Iniciar Promoción»?", "o": ["Cuando el cliente rechaza el crédito", "Cuando el cliente muestra interés en el discurso de ventas del asesor", "Cuando el cliente está en mora", "Cuando no se ubica al cliente"], "c": 1, "e": "Se coloca cuando el cliente muestra interés en el discurso de ventas del asesor de FACES."},
+  {"cat": "Promoción", "q": "Si eliges el estado «Iniciar Promoción», al guardar la app…", "o": ["Cierra la sesión", "Lleva automáticamente al Registro de Promoción", "Genera la solicitud de crédito", "Notifica al garante"], "c": 1, "e": "Con «Iniciar Promoción» la app conduce automáticamente al módulo de Registro de Promoción."},
+  {"cat": "Promoción", "q": "¿Cuántos dígitos valida la App para la cédula?", "o": ["8", "9", "10", "13"], "c": 2, "e": "La app valida cédula de 10 dígitos (y el teléfono también debe tener 10)."},
+  {"cat": "Promoción", "q": "¿Cuáles son los Tipos de Capacitación de la app?", "o": ["Ventas, Marketing y Finanzas", "Salud, Tecnología, Producción, Administrativo o Ninguna", "Básico, Intermedio y Avanzado", "Presencial y Virtual"], "c": 1, "e": "Salud, Tecnología, Producción, Administrativo o Ninguna."},
+  {"cat": "Promoción", "q": "¿Cuándo NO se considera realizada una promoción?", "o": ["Si el cliente no acepta de inmediato", "Si no entrega datos básicos: cédula, dirección y teléfono", "Si la visita es corta", "Si no se toma foto"], "c": 1, "e": "Sin datos básicos (cédula, dirección, teléfono) no cuenta como promoción ni como gestión."},
+  {"cat": "Promoción", "q": "¿De cuántas formas se puede iniciar el Registro de Promoción?", "o": ["Una", "Dos", "Tres", "Cinco"], "c": 2, "e": "Tres: desde el menú Herramientas, desde la pestaña Gestión con «Iniciar Promoción», o buscando una promoción previa."},
+  {"cat": "Promoción", "q": "Si el microempresario ya es cliente de FACES, sus datos…", "o": ["Se ocultan", "Se cargan automáticamente y se deben actualizar", "No se pueden ver", "Deben escribirse de nuevo desde cero"], "c": 1, "e": "Se cargan automáticamente y se deben actualizar para mejorar la calidad de la información del core."},
+  {"cat": "Promoción", "q": "El campo «Requiere Capacitación»…", "o": ["Es opcional", "Debe completarse en todas las promociones", "Solo aplica a clientes nuevos", "Lo llena el sistema"], "c": 1, "e": "Debe completarse en todas las promociones."},
+  {"cat": "Promoción", "q": "¿Quién puede hacer promoción en una zona autorizada?", "o": ["Solo el asesor dueño de esa zona", "Todo el equipo de negocios; el sistema migra al asesor que corresponde", "Solo el Jefe de Agencia", "Nadie fuera de su administración"], "c": 1, "e": "Todo el equipo de negocios puede promocionar en zonas autorizadas; el sistema migra al asesor correspondiente."},
+  {"cat": "Promoción", "q": "Tras guardar una promoción, para avanzar a la siguiente etapa se presiona…", "o": ["«Cerrar»", "«Pasar Asesoría»", "«Nueva Promoción»", "«Solicitud directa»"], "c": 1, "e": "«Pasar Asesoría» avanza del Registro de Promoción a la Asesoría de Crédito."},
+  {"cat": "Asesoría", "q": "La cuota que muestra la calculadora de la app es…", "o": ["El valor exacto y definitivo", "Una cuota estimada que puede no coincidir al centavo con la tabla final", "El promedio del sector", "Solo el interés"], "c": 1, "e": "Es estimada; debe informarse al cliente que puede no coincidir al centavo con la tabla del desembolso."},
+  {"cat": "Asesoría", "q": "En el campo «Observación» (origen de la asesoría), una opción válida es…", "o": ["Promoción Directa", "Cliente moroso", "Reactivación express", "Convenio bancario"], "c": 0, "e": "Observación: Promoción Directa, Referido, Cliente y Otras Fuentes."},
+  {"cat": "Asesoría", "q": "La acción complementaria «Consulta Buró» sirve para…", "o": ["Ver requisitos del producto", "Verificar el comportamiento crediticio en el buró", "Calcular la cuota", "Registrar capacitación"], "c": 1, "e": "Verifica el comportamiento crediticio del cliente en el buró."},
+  {"cat": "Asesoría", "q": "¿De cuántas maneras se accede a la Asesoría de Crédito?", "o": ["Una", "Dos", "Tres", "Cuatro"], "c": 2, "e": "Tres: desde el menú Herramientas, desde «Pasar Asesoría» al terminar una promoción, o desde la pestaña Gestión."},
+  {"cat": "Asesoría", "q": "La Asesoría de Crédito es el proceso en el que el asesor…", "o": ["Solo entrega dinero", "Recepta la información primaria del cliente para detallar la operación y cerrar la venta", "Cobra las cuotas", "Actualiza el mapa"], "c": 1, "e": "En la Asesoría el asesor recepta la información primaria y brinda el detalle de la operación para cerrar la venta."},
+  {"cat": "Solicitud", "q": "Sobre la pestaña «Situación PPI»…", "o": ["Es opcional", "Todas las preguntas son obligatorias; sin responderlas no se guarda", "Solo aplica a créditos > $8.000", "La llena el sistema"], "c": 1, "e": "El PPI (Índice de Probabilidad de Pobreza) tiene todas sus preguntas obligatorias."},
+  {"cat": "Solicitud", "q": "Al capturar la ubicación de la microempresa, la app exige antes de la cámara…", "o": ["Escribir el nombre del negocio", "Fijar la ubicación GPS actual", "Cargar la cédula escaneada", "Confirmar con el garante"], "c": 1, "e": "Se exige fijar el GPS antes de habilitar la cámara."},
+  {"cat": "Solicitud", "q": "En la pestaña «Comentarios Asesor» se debe colocar específicamente…", "o": ["El nombre del garante", "El destino del crédito y la recomendación del asesor", "El color del local", "La ruta de visita"], "c": 1, "e": "Es la última pestaña; el asesor registra los parámetros finales, la recomendación y el destino del crédito."},
+  {"cat": "Solicitud", "q": "¿Cómo se guarda finalmente la Solicitud?", "o": ["Con el botón «Enviar SMS»", "Presionando el ícono del disquete (esquina superior derecha)", "Cerrando la app", "Llamando al Jefe de Agencia"], "c": 1, "e": "Se presiona el ícono del disquete; la app valida los campos obligatorios antes de enviarla."},
+  {"cat": "Solicitud", "q": "La pestaña «Flujo Microempresa» levanta…", "o": ["Los datos del garante", "La información económica y operativa de la microempresa que respaldará el crédito", "Las fotos del hogar", "El PPI"], "c": 1, "e": "Recoge la información económica y operativa de la microempresa que respaldará el crédito."},
+  {"cat": "Solicitud", "q": "La pestaña «Garantías» permite…", "o": ["Calcular la cuota", "Registrar uno o varios garantes y detallar los activos que respaldan el crédito", "Ver el mapa", "Consultar el buró"], "c": 1, "e": "Permite registrar garantes y detallar los activos que respaldan la operación."},
+  {"cat": "Imágenes", "q": "En la foto del hogar de un crédito ORIGINAL debe…", "o": ["Tomarse en vertical", "Aparecer el microempresario con rostro visible", "No salir ninguna persona", "Tomarse de noche"], "c": 1, "e": "En originales el microempresario debe aparecer y distinguirse su rostro."},
+  {"cat": "Imágenes", "q": "¿Cómo debe estar ubicado el celular al tomar la fotografía?", "o": ["Vertical", "Horizontal", "Inclinado 45°", "Boca abajo"], "c": 1, "e": "Para tomar la fotografía el celular debe estar ubicado horizontalmente."},
+  {"cat": "Imágenes", "q": "¿Cuál es la primera fotografía que se debe levantar?", "o": ["La del hogar", "La de la microempresa", "La del garante", "La de la cédula"], "c": 1, "e": "El proceso inicia en la microempresa, por lo que esa debe ser la primera fotografía."},
+  {"cat": "Imágenes", "q": "En clientes SUBSECUENTES, en la foto del hogar…", "o": ["Siempre debe estar el microempresario", "No necesariamente debe estar el microempresario, salvo criterio del asesor", "No se toma foto", "Debe estar el garante"], "c": 1, "e": "Para subsecuentes no es obligatorio que aparezca el microempresario, salvo mejor criterio del asesor."},
+  {"cat": "Imágenes", "q": "La finalidad de la foto del hogar es…", "o": ["Calcular la cuota", "Evidenciar que se realizó la visita al domicilio", "Reemplazar la cédula", "Medir la mora"], "c": 1, "e": "Evidencia que se realizó la visita al domicilio y ayuda a ubicarlo a futuro."},
+  {"cat": "Imágenes", "q": "¿En qué momento se recomienda tomar la foto de la microempresa?", "o": ["De madrugada", "En las horas de mayor funcionamiento del negocio", "Cuando esté cerrada", "Cualquier hora da igual"], "c": 1, "e": "Se recomienda tomarla en las horas de mayor funcionamiento para evidenciar la actividad."},
+  {"cat": "Mora", "q": "En Clientes en Mora, la «Acción» de cobranza se escoge…", "o": ["Al azar", "Según los días de mora, conforme la metodología de cobranzas", "Siempre Notificación FACES 1", "Según lo que pida el cliente"], "c": 1, "e": "Se selecciona según los días de mora, de acuerdo con la metodología institucional."},
+  {"cat": "Mora", "q": "El botón «REFRESCAR IMÁGENES» en la pestaña Imágenes de Mora…", "o": ["Descarga fotos del core", "No realiza ninguna acción, no debe utilizarse", "Borra fotos antiguas", "Las envía al Jefe de Agencia"], "c": 1, "e": "En Clientes en Mora ese botón no ejecuta ninguna acción; no debe utilizarse."},
+  {"cat": "Mora", "q": "¿Desde dónde se accede al módulo de Clientes en Mora?", "o": ["Desde el dashboard", "Desde la Hoja de Ruta, categoría «Clientes en Mora»", "Desde Consulta de Saldos", "Desde el Mapa de Clientes"], "c": 1, "e": "El acceso es desde la Hoja de Ruta, eligiendo la categoría «Clientes en Mora»."},
+  {"cat": "Mora", "q": "¿Cuál es la acción que aparece por defecto en la gestión de cobranza?", "o": ["Llamada telefónica", "Envío de Notificación FACES 1", "Visita agendada", "Acuerdo de pago"], "c": 1, "e": "Por defecto aparece «Envío de Notificación FACES 1», editable según los días de mora."},
+  {"cat": "Mora", "q": "El ícono verde de WhatsApp en la pestaña Gestión de Mora sirve para…", "o": ["Llamar a la central", "Abrir el chat directo con el cliente para seguimiento o aviso", "Enviar la ubicación", "Borrar la gestión"], "c": 1, "e": "Abre el chat directo con el cliente para enviar seguimiento o el aviso de vencimiento."},
+  {"cat": "Mora", "q": "El campo «Verificar teléfono» valida automáticamente que el número tenga…", "o": ["7 dígitos", "9 dígitos", "10 dígitos (10/10)", "13 dígitos"], "c": 2, "e": "La app valida que el teléfono tenga 10 dígitos (indicador 10/10)."},
+  {"cat": "Mora", "q": "En la gestión de cobranza, la «Fecha Pago» corresponde a…", "o": ["La fecha de desembolso", "La fecha acordada con el cliente para cumplir el compromiso", "La fecha de hoy", "El vencimiento original"], "c": 1, "e": "Es la fecha acordada con el cliente para el cumplimiento del compromiso de pago."},
+  {"cat": "Mora", "q": "El botón «Guardar» de la gestión de mora es de color morado y se habilita…", "o": ["Al tomar una foto", "Al fijar la ubicación actual y completar los campos obligatorios", "Al llamar al cliente", "Automáticamente"], "c": 1, "e": "Se habilita una vez completos los campos obligatorios y fijada la ubicación."},
+  {"cat": "Consulta Saldos", "q": "Para que la búsqueda por NOMBRE sea exitosa se deben ingresar…", "o": ["Solo el primer nombre", "Solo el apellido", "Nombres y apellidos completos", "El número de operación"], "c": 2, "e": "Requiere nombres y apellidos completos; de lo contrario no arroja resultado."},
+  {"cat": "Consulta Saldos", "q": "La Consulta de Saldos permite ver en tiempo real…", "o": ["Solo el nombre del cliente", "La siguiente cuota, su vencimiento, el estado del crédito y las garantías", "Solo la foto del cliente", "El mapa de la zona"], "c": 1, "e": "Permite ver la siguiente cuota, su vencimiento, el estado (vigente/vencido) y las garantías, sin entrar al escritorio."},
+  {"cat": "Consulta Saldos", "q": "¿Cuál es la forma más rápida de consultar un saldo?", "o": ["Por nombre", "Por cédula (recupera de inmediato del Core)", "Por número de teléfono", "Por dirección"], "c": 1, "e": "La consulta por cédula es la más rápida porque recupera de inmediato la información del Core."},
+  {"cat": "Consulta Saldos", "q": "La pestaña «Mis Garantías» muestra…", "o": ["Las cuotas del cliente", "Las garantías que el cliente otorgó a otras operaciones", "El mapa del cliente", "Los puntos de pago"], "c": 1, "e": "Muestra las garantías que el cliente consultado ha otorgado a otras operaciones."},
+  {"cat": "Consulta Saldos", "q": "En «Mis Préstamos», la etiqueta de color del crédito indica…", "o": ["El monto del crédito", "Si el crédito está al día o «VENCIDO»", "El barrio del cliente", "La calificación"], "c": 1, "e": "La etiqueta de color indica si el crédito está al día o «VENCIDO»."},
+  {"cat": "Mapa Clientes", "q": "En el Mapa de Clientes, las etiquetas naranja y rojo indican…", "o": ["Clientes nuevos", "Créditos con cuotas vencidas", "Clientes fuera de zona", "Puntos de pago"], "c": 1, "e": "Naranja y rojo destacan créditos vencidos; los verdes están al día."},
+  {"cat": "Mapa Clientes", "q": "Las etiquetas A-1, A-2, B sobre el mapa corresponden a…", "o": ["El barrio", "La calificación del cliente", "El número de cuotas", "La ruta"], "c": 1, "e": "Corresponden a la calificación del cliente."},
+  {"cat": "Mapa Clientes", "q": "El botón verde en la tarjeta del cliente sobre el mapa permite…", "o": ["Llamar al cliente", "Registrar una gestión directamente desde el mapa", "Borrar al cliente", "Cambiar de zona"], "c": 1, "e": "Permite levantar una gestión directamente desde el mapa."},
+  {"cat": "Mapa Clientes", "q": "Las etiquetas de monto concentradas sobre el mapa ayudan a…", "o": ["Ocultar clientes", "Identificar zonas de mayor exposición de cartera y planificar visitas", "Calcular la cuota", "Cambiar la calificación"], "c": 1, "e": "Permiten identificar zonas de mayor exposición de cartera y planificar visitas eficientes."},
+  {"cat": "Puntos de Pago", "q": "¿Qué es el «Cupo de Transacción» de un punto de pago?", "o": ["El horario del local", "El monto máximo que procesa por transacción", "La comisión del establecimiento", "La distancia al cliente"], "c": 1, "e": "Limita el monto máximo por transacción; si la cuota lo excede se fracciona o se usa otro punto."},
+  {"cat": "Puntos de Pago", "q": "Al actualizar o eliminar un Punto de Pago, el campo «Motivo» es…", "o": ["Opcional", "Obligatorio, deja trazabilidad del cambio", "Solo para eliminar", "Un comentario sin efecto"], "c": 1, "e": "Es obligatorio en toda actualización o eliminación y deja trazabilidad."},
+  {"cat": "Puntos de Pago", "q": "Al ingresar al módulo Puntos de Pago aparecen dos opciones…", "o": ["Pagar y Cobrar", "Buscar y Nuevo Punto de Pago", "Mapa y Lista", "Editar y Borrar"], "c": 1, "e": "El menú emergente ofrece Buscar (existentes) y Nuevo Punto de Pago."},
+  {"cat": "Puntos de Pago", "q": "En el Mapa de Puntos de Pago, los marcadores amarillos muestran…", "o": ["La ruta del asesor", "El cupo de transacción disponible de cada punto", "La mora del sector", "La foto del local"], "c": 1, "e": "La etiqueta de cada marcador indica el cupo de transacción disponible (por ejemplo $500, $2000)."},
+  {"cat": "Puntos de Pago", "q": "La tarjeta del establecimiento sobre el mapa permite al asesor…", "o": ["Cambiar la cuota", "Recomendar al cliente el punto más cercano según el monto de la cuota", "Eliminar al cliente", "Ver el buró"], "c": 1, "e": "Permite recomendar el punto de pago más cercano según el monto de la cuota a cancelar."},
+  {"cat": "Notificaciones", "q": "La pestaña «Incumplidos» muestra…", "o": ["Créditos aprobados hoy", "Clientes que no cumplieron su compromiso de pago en la fecha pactada", "Visitas de la semana", "Clientes precalificados"], "c": 1, "e": "Lista a los clientes que no cumplieron el compromiso de pago; es la vista prioritaria."},
+  {"cat": "Notificaciones", "q": "El módulo Notificaciones funciona como…", "o": ["Un chat interno", "Un calendario/agenda de compromisos del asesor", "Un mapa de clientes", "Una calculadora"], "c": 1, "e": "Centraliza la agenda de compromisos: incumplidos, pendientes y visitas agendadas, día a día."},
+  {"cat": "Notificaciones", "q": "La pestaña «Pendientes» lista…", "o": ["Los créditos castigados", "Los compromisos pactados que aún no llegan a su fecha de vencimiento", "Los clientes nuevos", "Las garantías vencidas"], "c": 1, "e": "Lista los compromisos pactados que aún no vencen, para anticipar la gestión."},
+  {"cat": "Notificaciones", "q": "La pestaña «Visita Agendada» muestra…", "o": ["Las visitas ya realizadas", "Las visitas planificadas con clientes promocionados para su conversión a Solicitud", "Los clientes en mora", "Los puntos de pago"], "c": 1, "e": "Muestra las visitas planificadas con clientes promocionados para lograr su conversión a Solicitud."},
+  {"cat": "Notificaciones", "q": "En el calendario de Compromisos, los días con compromisos aparecen…", "o": ["En blanco", "Marcados con un círculo de color y un número", "Tachados", "Ocultos"], "c": 1, "e": "Los días con compromisos se marcan con un círculo de color y un número con la cantidad."},
+  {"cat": "Operativo", "q": "Sobre la Sincronización de catálogos, la recomendación es…", "o": ["Una sola vez al instalar", "Ejecutarla a diario y siempre que se use un equipo diferente", "Solo cuando falla la app", "Nunca"], "c": 1, "e": "Sincronizar al usar un equipo nuevo y, de preferencia, cada mañana."},
+  {"cat": "Operativo", "q": "¿Qué exige la app antes de permitir guardar una gestión?", "o": ["Tomar una foto", "Fijar la ubicación GPS: la app no permite guardar sin ella", "Llamar al cliente", "Escanear la cédula"], "c": 1, "e": "La app no permite guardar una gestión sin fijar la ubicación GPS."},
+  {"cat": "Operativo", "q": "Antes de guardar, se debe verificar que cédula y teléfono tengan…", "o": ["7 dígitos", "10 dígitos", "13 dígitos", "Cualquier cantidad"], "c": 1, "e": "Se debe verificar que cédula y teléfono tengan 10 dígitos."},
+  {"cat": "Operativo", "q": "Para trabajar en zonas sin cobertura móvil se debe…", "o": ["Esperar a tener señal", "Confirmar antes que la información esté en el dispositivo y mantener los mapas actualizados", "Apagar el GPS", "Usar otro celular"], "c": 1, "e": "Confirmar previamente que la información esté disponible en el equipo y tener los mapas actualizados."},
+  {"cat": "Operativo", "q": "Al cierre del día se recomienda revisar…", "o": ["El clima", "El cumplimiento de la Hoja de Ruta y los contadores rojos", "El saldo bancario", "Las noticias"], "c": 1, "e": "Revisar el cumplimiento de la Hoja de Ruta y los contadores rojos al cierre del día."},
 ];
 const SHAPES_ANS = ['<path d="M12 2 22 21 2 21z"/>','<path d="M12 2 22 12 12 22 2 12z"/>','<circle cx="12" cy="12" r="10"/>','<rect x="3" y="3" width="18" height="18" rx="4"/>'];
 const OPC = ['#C8102E','#1D6FB8','#E8A400','#2E9E5B'];
@@ -328,7 +407,7 @@ function saveSession(o){ try{ localStorage.setItem("retofaces", JSON.stringify(o
 function loadSession(){ try{ return JSON.parse(localStorage.getItem("retofaces")||"null"); }catch(e){ return null; } }
 function clearSession(){ try{ localStorage.removeItem("retofaces"); }catch(e){} }
 
-const T_MAX = 20;
+let TMAX = 20;
 let ROOM=null, ROLE=null, MYID=null, MYAV=0, QUIZ=null, hostTimer=null, myTimer=null, answeredThis=false, tickedAt=99;
 
 /* ═══════════ MÚSICA ═══════════ */
@@ -354,14 +433,45 @@ function confetti(){
 }
 
 /* ═══════════ ANFITRIÓN ═══════════ */
+/* ═══════════ ANFITRIÓN · CONFIGURACIÓN ═══════════ */
+const ALLCATS = [...new Set(BANCO.map(q=>q.cat))];
+let cfgN=8, cfgSec=20, cfgCats=new Set(ALLCATS);
+
 $("#btn-crear").addEventListener("click", async ()=>{
   if(needFB()) return;
   ROLE="host"; await ensureAuth();
+  buildConfigUI(); show("s-config");
+});
+
+function chipEl(lbl,sel){ const b=document.createElement("button"); b.type="button"; b.className="chipx"+(sel?" sel":""); b.textContent=lbl; return b; }
+function markSel(cont,el){ cont.querySelectorAll(".chipx").forEach(x=>x.classList.remove("sel")); el.classList.add("sel"); }
+function updCount(){ const avail=BANCO.filter(p=>cfgCats.has(p.cat)).length; const n=cfgN===0?avail:Math.min(cfgN,avail); $("#cfg-count").textContent=`(${avail} disponibles · se usarán ${Math.max(0,n)})`; }
+function buildConfigUI(){
+  const nEl=$("#cfg-n"); nEl.innerHTML="";
+  [["6",6],["8",8],["12",12],["Todas",0]].forEach(([l,v])=>{ const c=chipEl(l,v===cfgN); c.onclick=()=>{ cfgN=v; markSel(nEl,c); updCount(); }; nEl.appendChild(c); });
+  const sEl=$("#cfg-sec"); sEl.innerHTML="";
+  [["15 s",15],["20 s",20],["30 s",30]].forEach(([l,v])=>{ const c=chipEl(l,v===cfgSec); c.onclick=()=>{ cfgSec=v; markSel(sEl,c); }; sEl.appendChild(c); });
+  const cEl=$("#cfg-cats"); cEl.innerHTML="";
+  ALLCATS.forEach(cat=>{ const c=chipEl(cat,cfgCats.has(cat)); c.onclick=()=>{ if(cfgCats.has(cat))cfgCats.delete(cat); else cfgCats.add(cat); c.classList.toggle("sel"); updCount(); }; cEl.appendChild(c); });
+  updCount();
+}
+$("#cfg-all").onclick=()=>{ cfgCats=new Set(ALLCATS); buildConfigUI(); };
+$("#cfg-none").onclick=()=>{ cfgCats=new Set(); buildConfigUI(); };
+$("#cfg-back").onclick=()=>{ show("s-rol"); };
+
+function buildQuiz(){
+  let pool=BANCO.map((p,i)=>({p})).filter(x=>cfgCats.has(x.p.cat));
+  if(pool.length===0) pool=BANCO.map(p=>({p}));
+  shuffle(pool);
+  const n=cfgN===0?pool.length:Math.min(cfgN,pool.length);
+  return pool.slice(0,n).map(({p})=>{ const opts=shuffle(p.o.map((t,k)=>({t,ok:k===p.c}))); return { cat:p.cat,q:p.q,e:p.e,opts:opts.map(o=>o.t),correct:opts.findIndex(o=>o.ok) }; });
+}
+
+$("#cfg-create").addEventListener("click", async ()=>{
+  if(cfgCats.size===0){ alert("Elige al menos un tema."); return; }
   const prev=loadSession(); if(prev&&prev.role==="host"&&prev.pin) db.ref("rooms/"+prev.pin).remove().catch(()=>{});
-  ROOM=pin6();
-  const order = shuffle([...Array(BANCO.length).keys()]).slice(0,8);
-  QUIZ = order.map(i=>{ const p=BANCO[i]; const opts=shuffle(p.o.map((t,k)=>({t,ok:k===p.c}))); return { cat:p.cat,q:p.q,e:p.e,opts:opts.map(o=>o.t),correct:opts.findIndex(o=>o.ok) }; });
-  await db.ref("rooms/"+ROOM).set({ meta:{state:"lobby",qIndex:0,phase:"question",qStartAt:0,total:QUIZ.length}, quiz:QUIZ });
+  ROOM=pin6(); TMAX=cfgSec; QUIZ=buildQuiz();
+  await db.ref("rooms/"+ROOM).set({ meta:{state:"lobby",qIndex:0,phase:"question",qStartAt:0,total:QUIZ.length,tMax:TMAX}, quiz:QUIZ });
   saveSession({role:"host",pin:ROOM,ts:Date.now()});
   startBg(); abrirLobby(); hostBind();
 });
@@ -387,6 +497,7 @@ function irPregunta(i){ db.ref("rooms/"+ROOM+"/meta").update({ state:"playing", 
 function hostBind(){
   db.ref("rooms/"+ROOM+"/meta").on("value", snap=>{
     const m=snap.val(); if(!m)return;
+    if(m.tMax) TMAX=m.tMax;
     if(m.state==="podium"){ renderPodio(); return; }
     if(m.state!=="playing") return;
     if(m.phase==="reveal"){ renderReveal(m,"host"); return; }
@@ -406,7 +517,7 @@ function renderPreguntaHost(m){
   db.ref("rooms/"+ROOM+"/answers/"+m.qIndex).on("value", s=> $("#q-info").textContent=`${Object.keys(s.val()||{}).length} respondieron`);
   tickedAt=99; startBar(m.qStartAt,true);
   clearTimeout(hostTimer);
-  const rest=Math.max(0,T_MAX*1000-(ahora()-m.qStartAt));
+  const rest=Math.max(0,TMAX*1000-(ahora()-m.qStartAt));
   hostTimer=setTimeout(()=> db.ref("rooms/"+ROOM+"/meta").update({phase:"reveal"}), rest+150);
 }
 
@@ -517,6 +628,7 @@ $("#btn-entrar").addEventListener("click", async ()=>{
 function playerBind(){
   db.ref("rooms/"+ROOM+"/meta").on("value", snap=>{
     const m=snap.val(); if(!m){ alert("La sala fue cerrada por el anfitrión."); location.reload(); return; }
+    if(m.tMax) TMAX=m.tMax;
     if(m.state==="lobby"){ show("s-wait"); return; }
     if(m.state==="podium"){ renderPodio(); return; }
     if(m.state==="playing"){ if(m.phase==="reveal") renderReveal(m,"player"); else renderPreguntaPlayer(m); }
@@ -533,15 +645,15 @@ function renderPreguntaPlayer(m){
   answeredThis=false; startBar(m.qStartAt,false);
   document.querySelectorAll(".op").forEach(b=> b.onclick=()=>enviar(+b.dataset.k,m.qIndex,m.qStartAt,p.correct));
   clearTimeout(myTimer);
-  const rest=Math.max(0,T_MAX*1000-(ahora()-m.qStartAt));
+  const rest=Math.max(0,TMAX*1000-(ahora()-m.qStartAt));
   myTimer=setTimeout(()=>{ if(!answeredThis)enviar(-1,m.qIndex,m.qStartAt,p.correct); }, rest+50);
 }
 
 function enviar(choice,qIndex,qStartAt,correct){
   if(answeredThis)return; answeredThis=true;
   clearTimeout(myTimer); stopBar();
-  const rest=Math.max(0,T_MAX*1000-(ahora()-qStartAt))/1000;
-  const ok=choice===correct, pts=ok?Math.round(500+500*(rest/T_MAX)):0;
+  const rest=Math.max(0,TMAX*1000-(ahora()-qStartAt))/1000;
+  const ok=choice===correct, pts=ok?Math.round(500+500*(rest/TMAX)):0;
   db.ref("rooms/"+ROOM+"/answers/"+qIndex+"/"+MYID).set({choice,correct:ok,points:pts});
   if(pts>0) db.ref("rooms/"+ROOM+"/players/"+MYID+"/score").transaction(v=>(v||0)+pts);
   document.querySelectorAll(".op").forEach(o=>{ o.onclick=null; if(+o.dataset.k!==choice)o.classList.add("dim"); });
@@ -571,7 +683,7 @@ function renderPodio(){
 let barInt=null;
 function startBar(qStartAt,isHost){
   const bar=$("#q-bar");
-  const draw=()=>{ const rem=Math.max(0,T_MAX*1000-(ahora()-qStartAt)); bar.style.transition="width .25s linear"; bar.style.width=(rem/(T_MAX*1000)*100)+"%";
+  const draw=()=>{ const rem=Math.max(0,TMAX*1000-(ahora()-qStartAt)); bar.style.transition="width .25s linear"; bar.style.width=(rem/(TMAX*1000)*100)+"%";
     if(isHost){ const sec=Math.ceil(rem/1000); if(sec<=5&&sec>0&&sec!==tickedAt){ tickedAt=sec; tick(); } } };
   draw(); clearInterval(barInt); barInt=setInterval(draw,250);
 }
